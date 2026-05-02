@@ -16,6 +16,16 @@
   status = 200
   force = true
 
+# Proxy direct Netlify Function calls to the upstream so endpoints like
+# /.netlify/functions/stripe-webhook and /.netlify/functions/vote-reconcile
+# (used by the vote / admin flows) reach the deploy that actually hosts them.
+# Without this, paid-vote webhooks and reconcile calls 404 in production.
+[[redirects]]
+  from = "/.netlify/functions/*"
+  to = "https://69f54b337755e5d176e2cef9--thenextfilmlead.netlify.app/.netlify/functions/:splat"
+  status = 200
+  force = true
+
 # The post-login Admin button and the vote page link to /old-project/vote.html
 # (and its sibling /old-project/style.css, /old-project/app.js,
 # /old-project/identity-bundle.js). Proxy them to the same upstream so the
@@ -35,3 +45,17 @@
   to = "https://69f54b337755e5d176e2cef9--thenextfilmlead.netlify.app/contestant-details.html"
   status = 200
   force = true
+
+# Ensure vote-related API responses are never cached by the Netlify Edge
+# or the browser. After a vote is cast the page reloads and re-fetches
+# the contestant data — a stale cached response would make the new vote
+# appear missing, even though the underlying database was updated.
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, max-age=0"
+
+[[headers]]
+  for = "/contestant-details.html"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, max-age=0"
