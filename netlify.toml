@@ -4,6 +4,18 @@
 # Proxy the API and TanStack Start server-function endpoints to the
 # upstream deploy that hosts the live back-end and database.
 # Status 200 = transparent proxy (the user's URL bar stays on this site).
+
+# /api/paypal-vote-claim is handled locally by a Netlify Function because
+# the upstream deploy does not implement it. The function credits the
+# purchased votes by calling the upstream /api/vote endpoint. This
+# redirect must appear BEFORE the generic /api/* proxy so it takes
+# precedence.
+[[redirects]]
+  from = "/api/paypal-vote-claim"
+  to = "/.netlify/functions/paypal-vote-claim"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/api/*"
   to = "https://69f54b337755e5d176e2cef9--thenextfilmlead.netlify.app/api/:splat"
@@ -26,12 +38,6 @@
   status = 200
   force = true
 
-# The admin panel's leaderboard and contestant list link each contestant's
-# Profile button to /contestant-details.html?id=<id>, which is a top-level
-# page on the upstream (not under /old-project/). Proxy it so the profile
-# page renders with its data.
-[[redirects]]
-  from = "/contestant-details.html"
-  to = "https://69f54b337755e5d176e2cef9--thenextfilmlead.netlify.app/contestant-details.html"
-  status = 200
-  force = true
+# /contestant-details.html is served from the local file in the repo so
+# the page can register paid votes the moment a tier is selected. The
+# other admin/legacy redirects above still apply.
