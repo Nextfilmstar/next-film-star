@@ -16,6 +16,13 @@
   status = 200
   force = true
 
+# Direct Netlify Function calls (e.g. /.netlify/functions/stripe-webhook,
+# /.netlify/functions/vote-reconcile) are forwarded to the upstream by real
+# function files in netlify/functions/. A [[redirects]] rule for
+# /.netlify/* is silently ignored by the platform because Netlify reserves
+# that path namespace, which is why the previous redirect-based fix did not
+# actually take effect on the published site.
+
 # The post-login Admin button and the vote page link to /old-project/vote.html
 # (and its sibling /old-project/style.css, /old-project/app.js,
 # /old-project/identity-bundle.js). Proxy them to the same upstream so the
@@ -35,3 +42,17 @@
   to = "https://69f54b337755e5d176e2cef9--thenextfilmlead.netlify.app/contestant-details.html"
   status = 200
   force = true
+
+# Ensure vote-related API responses are never cached by the Netlify Edge
+# or the browser. After a vote is cast the page reloads and re-fetches
+# the contestant data — a stale cached response would make the new vote
+# appear missing, even though the underlying database was updated.
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, max-age=0"
+
+[[headers]]
+  for = "/contestant-details.html"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, max-age=0"
