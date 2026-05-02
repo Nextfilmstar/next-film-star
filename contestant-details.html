@@ -790,9 +790,8 @@
           castVote(selectedContestantId, 1, this);
         });
 
-        // Paid vote boxes — open the Stripe checkout page for the
-        // selected amount. Votes are credited by the Stripe webhook
-        // after the payment succeeds.
+        // Paid vote boxes — register the votes against the contestant
+        // first, then redirect to the Stripe checkout page for that amount.
         document.querySelectorAll(".paid-vote").forEach(function (btn) {
           btn.addEventListener("click", function () {
             if (!selectedContestantId) return;
@@ -804,8 +803,30 @@
               return;
             }
             btn.disabled = true;
+            var votedId = selectedContestantId;
             var sep = link.indexOf("?") === -1 ? "?" : "&";
-            window.location.href = link + sep + "client_reference_id=" + encodeURIComponent(selectedContestantId);
+            var stripeUrl = link + sep + "client_reference_id=" + encodeURIComponent(votedId);
+            fetch("/api/vote", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: votedId, voterEmail: "", votes: amount })
+            }).then(function (res) {
+              if (!res.ok) {
+                return res.text().then(function (errText) {
+                  var errMsg = "Vote failed";
+                  try { errMsg = JSON.parse(errText).error || errMsg; } catch (e) {}
+                  showToast(errMsg, true);
+                  btn.disabled = false;
+                });
+              }
+              showToast(amount === 1
+                ? "1 vote cast successfully! Redirecting to payment..."
+                : amount + " votes cast successfully! Redirecting to payment...");
+              window.location.href = stripeUrl;
+            }).catch(function () {
+              showToast("Vote failed. Please try again.", true);
+              btn.disabled = false;
+            });
           });
         });
 
