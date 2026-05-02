@@ -1,0 +1,37 @@
+[build]
+  publish = "."
+
+# Proxy the API and TanStack Start server-function endpoints to the
+# upstream deploy that hosts the live back-end and database.
+# Status 200 = transparent proxy (the user's URL bar stays on this site).
+[[redirects]]
+  from = "/api/*"
+  to = "https://69f54b337755e5d176e2cef9--thenextfilmlead.netlify.app/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/_serverFn/*"
+  to = "https://69f54b337755e5d176e2cef9--thenextfilmlead.netlify.app/_serverFn/:splat"
+  status = 200
+  force = true
+
+# The post-login Admin button and the vote page link to /old-project/vote.html
+# (and its sibling /old-project/style.css, /old-project/app.js,
+# /old-project/identity-bundle.js). Proxy them to the same upstream so the
+# admin dashboard and the vote page render with their data and credentials.
+[[redirects]]
+  from = "/old-project/*"
+  to = "https://69f54b337755e5d176e2cef9--thenextfilmlead.netlify.app/old-project/:splat"
+  status = 200
+  force = true
+
+# The admin panel's leaderboard and contestant list link each contestant's
+# Profile button to /contestant-details.html?id=<id>, which is a top-level
+# page on the upstream (not under /old-project/). Proxy it so the profile
+# page renders with its data.
+[[redirects]]
+  from = "/contestant-details.html"
+  to = "https://69f54b337755e5d176e2cef9--thenextfilmlead.netlify.app/contestant-details.html"
+  status = 200
+  force = true
