@@ -790,14 +790,22 @@
           castVote(selectedContestantId, 1, this);
         });
 
-        // Paid vote boxes — register the selected number of votes
-        // immediately against the contestant. No payment step.
+        // Paid vote boxes — open the Stripe checkout page for the
+        // selected amount. Votes are credited by the Stripe webhook
+        // after the payment succeeds.
         document.querySelectorAll(".paid-vote").forEach(function (btn) {
           btn.addEventListener("click", function () {
             if (!selectedContestantId) return;
             var amount = parseInt(btn.getAttribute("data-amount"));
             if (!amount || amount <= 0) return;
-            castVote(selectedContestantId, amount, btn);
+            var link = paymentLinks[amount];
+            if (!link) {
+              showToast("Payment link unavailable.", true);
+              return;
+            }
+            btn.disabled = true;
+            var sep = link.indexOf("?") === -1 ? "?" : "&";
+            window.location.href = link + sep + "client_reference_id=" + encodeURIComponent(selectedContestantId);
           });
         });
 
