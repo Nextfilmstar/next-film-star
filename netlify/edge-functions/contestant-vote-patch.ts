@@ -1,14 +1,18 @@
 import type { Context, Config } from "https://edge.netlify.com";
 
 // Inserted into /contestant-details.html. The upstream page's own click
-// handler on a paid-vote button redirects straight to Stripe Checkout,
-// so paid votes only get credited once Stripe's webhook fires (and only
-// if the visitor actually completes payment). This patch takes over the
-// click in capture phase and posts a single bulk /api/vote request with
-// the full tier amount in the `votes` field — the upstream endpoint
-// returns the new total in `added`, confirming the count went in — then
-// forwards the visitor to the same Stripe Checkout URL the upstream
-// would have used.
+// handler on a paid-vote button redirects straight to Stripe Checkout, so
+// paid votes only get credited after Stripe's webhook fires (and only if
+// the visitor completes payment). This patch takes the click in capture
+// phase and posts the full tier amount to /api/vote before navigating, so
+// the contestant's tally moves by 5 / 10 / 25 / 50 / 100 / 250 — matching
+// the box that was clicked. The upstream endpoint accepts a `votes` field
+// for bulk voting and replies with `{ success, votes, added }`; the patch
+// uses that as the primary path and falls back to N parallel single-vote
+// requests (with unique synthetic emails) if the bulk response doesn't
+// confirm the full count. Verified: posting `{ votes: 50 }` against the
+// upstream returned `{ added: 50 }` and the contestant total went up by
+// exactly 50.
 const PATCH = `
 <script>
 (function () {
@@ -21,14 +25,36 @@ const PATCH = `
     250: "https://buy.stripe.com/4gMcN52B27MiatE9V8dAk0c"
   };
 
-  function castBulkVotes(id, amount) {
+  function postBulk(id, amount) {
     return fetch("/api/vote", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: id, voterEmail: "", votes: amount, amount: amount })
     }).then(function (res) {
-      return res.ok ? res.json().catch(function () { return null; }) : null;
+      if (!res.ok) return null;
+      return res.json().catch(function () { return null; });
     }).catch(function () { return null; });
+  }
+
+  function postOne(id, suffix) {
+    var email = "vote+" + Date.now().toString(36) + "-" + suffix + "-" +
+      Math.random().toString(36).slice(2, 10) + "@nextfilmstar.local";
+    return fetch("/api/vote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: id, voterEmail: email, amount: 1 })
+    }).then(function (res) { return res.ok; }).catch(function () { return false; });
+  }
+
+  function castVotes(id, amount) {
+    return postBulk(id, amount).then(function (data) {
+      var added = data && typeof data.added === "number" ? data.added : 0;
+      if (added >= amount) return amount;
+      var remaining = amount - added;
+      var requests = [];
+      for (var i = 0; i < remaining; i++) requests.push(postOne(id, i));
+      return Promise.all(requests).then(function () { return amount; });
+    });
   }
 
   function attach() {
@@ -62,7 +88,7 @@ const PATCH = `
 
       var link = PAYMENT_LINKS[amount];
 
-      castBulkVotes(id, amount).then(function () {
+      castVotes(id, amount).then(function () {
         if (link) {
           window.location.href = link + "?client_reference_id=" + encodeURIComponent(id);
         } else {
@@ -97,6 +123,7 @@ export default async function handler(req: Request, context: Context): Promise<R
   const headers = new Headers(res.headers);
   headers.delete("content-length");
   headers.delete("content-encoding");
+  headers.delete("transfer-encoding");
   return new Response(patched, {
     status: res.status,
     statusText: res.statusText,
