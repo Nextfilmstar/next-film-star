@@ -16,15 +16,12 @@
   status = 200
   force = true
 
-# Proxy direct Netlify Function calls to the upstream so endpoints like
-# /.netlify/functions/stripe-webhook and /.netlify/functions/vote-reconcile
-# (used by the vote / admin flows) reach the deploy that actually hosts them.
-# Without this, paid-vote webhooks and reconcile calls 404 in production.
-[[redirects]]
-  from = "/.netlify/functions/*"
-  to = "https://69f54b337755e5d176e2cef9--thenextfilmlead.netlify.app/.netlify/functions/:splat"
-  status = 200
-  force = true
+# Direct Netlify Function calls (e.g. /.netlify/functions/stripe-webhook,
+# /.netlify/functions/vote-reconcile) are forwarded to the upstream by real
+# function files in netlify/functions/. A [[redirects]] rule for
+# /.netlify/* is silently ignored by the platform because Netlify reserves
+# that path namespace, which is why the previous redirect-based fix did not
+# actually take effect on the published site.
 
 # The post-login Admin button and the vote page link to /old-project/vote.html
 # (and its sibling /old-project/style.css, /old-project/app.js,
