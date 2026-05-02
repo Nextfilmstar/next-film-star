@@ -1,6 +1,17 @@
 [build]
   publish = "."
 
+# Route the login verify endpoint through a local Netlify Function first so
+# admin-set passwords (seed credentials and override blob store) can satisfy
+# the /apply page's `/api/user-credentials?action=verify` call before it
+# reaches the upstream. The function transparently proxies anything it does
+# not handle (signup, non-verify actions, GETs) to the same upstream below.
+[[redirects]]
+  from = "/api/user-credentials"
+  to = "/.netlify/functions/user-credentials-proxy"
+  status = 200
+  force = true
+
 # Proxy the API and TanStack Start server-function endpoints to the
 # upstream deploy that hosts the live back-end and database.
 # Status 200 = transparent proxy (the user's URL bar stays on this site).
@@ -20,11 +31,12 @@
 # (and its sibling /old-project/style.css, /old-project/app.js,
 # /old-project/identity-bundle.js). Proxy them to the same upstream so the
 # admin dashboard and the vote page render with their data and credentials.
+# Local files in ./old-project/ take precedence (force is intentionally off)
+# so we can ship overrides like vote.html with extra patch scripts injected.
 [[redirects]]
   from = "/old-project/*"
   to = "https://69f54b337755e5d176e2cef9--thenextfilmlead.netlify.app/old-project/:splat"
   status = 200
-  force = true
 
 # The admin panel's leaderboard and contestant list link each contestant's
 # Profile button to /contestant-details.html?id=<id>, which is a top-level

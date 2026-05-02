@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXT FILM LEAD</title>
+  <link rel="stylesheet" href="/old-project/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <header>
+    <h1>NEXT FILM LEAD</h1>
+    <p class="tagline">Vote for your favorite contestant!</p>
+    <nav class="header-nav">
+      <a class='nav-btn' href='/' style='text-decoration:none;'>Home</a>
+      <button class="nav-btn active" data-view="contestants">Contestant</button>
+      <button class="nav-btn" data-view="leaderboard">Leaderboard</button>
+      <button class="nav-btn" data-view="contact">Contact</button>
+      <button class="nav-btn" data-view="apply">Apply</button>
+      <button class="nav-btn" id="header-login-btn" data-view="apply">Login</button>
+    </nav>
+    <button id="admin-toggle" class="admin-toggle-btn">Admin</button>
+    <!-- Logged-in contestant bar -->
+    <div id="contestant-user-bar" class="contestant-user-bar hidden">
+      <span id="contestant-user-email"></span>
+      <button id="contestant-logout-btn" class="nav-btn" style="font-size:0.8rem;padding:4px 12px;">Logout</button>
+    </div>
+  </header>
+
+  <!-- Countdown Timer -->
+  <div id="countdown-banner" class="countdown-banner hidden">
+    <div class="countdown-label">Competition Ends In</div>
+    <div id="countdown-display" class="countdown-display">
+      <div class="countdown-unit"><span id="cd-days">00</span><small>Days</small></div>
+      <div class="countdown-sep">:</div>
+      <div class="countdown-unit"><span id="cd-hours">00</span><small>Hours</small></div>
+      <div class="countdown-sep">:</div>
+      <div class="countdown-unit"><span id="cd-mins">00</span><small>Minutes</small></div>
+      <div class="countdown-sep">:</div>
+      <div class="countdown-unit"><span id="cd-secs">00</span><small>Seconds</small></div>
+    </div>
+  </div>
+
+  <!-- Search Bar -->
+  <div id="search-bar" class="search-bar">
+    <input type="text" id="search-input" placeholder="Search contestants by name..." autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
+  </div>
+
+  <!-- Admin Login Modal -->
+  <div id="admin-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Admin Login</h2>
+      <input type="password" id="admin-password" placeholder="Enter admin password" />
+      <label for="admin-show-password" class="show-password-toggle">
+        <input type="checkbox" id="admin-show-password" />
+        Show password
+      </label>
+      <div class="modal-actions">
+        <button id="admin-login-btn" class="btn btn-primary">Login</button>
+        <button id="admin-cancel-btn" class="btn btn-secondary">Cancel</button>
+      </div>
+      <p id="admin-error" class="form-error hidden"></p>
+    </div>
+  </div>
+
+  <!-- Change Password Modal -->
+  <div id="change-password-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Change Admin Password</h2>
+      <input type="password" id="cp-current-password" placeholder="Current password" />
+      <input type="password" id="cp-new-password" placeholder="New password" />
+      <input type="password" id="cp-confirm-password" placeholder="Confirm new password" />
+      <label for="cp-show-passwords" class="show-password-toggle">
+        <input type="checkbox" id="cp-show-passwords" />
+        Show passwords
+      </label>
+      <div class="modal-actions">
+        <button id="cp-save-btn" class="btn btn-primary">Save</button>
+        <button id="cp-cancel-btn" class="btn btn-secondary">Cancel</button>
+      </div>
+      <p id="cp-error" class="form-error hidden"></p>
+      <p id="cp-success" class="form-success hidden"></p>
+    </div>
+  </div>
+
+  <!-- Admin Panel -->
+  <div id="admin-panel" class="admin-panel hidden">
+    <div class="admin-header">
+      <h2>Admin Panel</h2>
+      <div class="admin-header-actions" style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button id="change-password-btn" class="btn btn-secondary btn-sm">Change Password</button>
+        <button id="delete-all-contestants-btn" class="btn btn-danger btn-sm">Delete All Contestants</button>
+        <button id="admin-logout-btn" class="btn btn-secondary btn-sm">Logout</button>
+      </div>
+    </div>
+
+    <!-- Double Votes Toggle -->
+    <div class="add-form" style="margin-top: 20px;">
+      <h3>2x Votes</h3>
+      <p style="color:#aaa; font-size:0.85rem; margin-bottom:12px;">When enabled, all votes (free and paid) are doubled.</p>
+      <div class="double-votes-toggle-row">
+        <label class="toggle-switch">
+          <input type="checkbox" id="double-votes-toggle" />
+          <span class="toggle-slider"></span>
+        </label>
+        <span id="double-votes-label" class="toggle-label">Off</span>
+      </div>
+      <p id="double-votes-status" style="text-align:center; color:#888; margin-top:10px; font-size:0.85rem;"></p>
+    </div>
+
+    <!-- Emails Management -->
+    <div class="add-form" style="margin-top: 20px;">
+      <h3>EMAILS <span id="emails-count" style="color:#aaa; font-size:0.85rem; font-weight:normal;"></span></h3>
+      <p style="color:#aaa; font-size:0.85rem; margin-bottom:12px;">Emails attached to contestants in the Participants (Applications) section. Click a line to pick one email, or highlight multiple lines (or Ctrl/Cmd+A for all) and click Remove to delete them. Use Remove all to clear the list. Highlighted text can still be copied.</p>
+      <div class="emails-row" style="display:flex; gap:8px; align-items:flex-start;">
+        <textarea id="emails-dropdown" readonly rows="8" placeholder="Loading emails..." style="flex:1; padding:8px; border-radius:6px; border:1px solid #333; background:#1a1a2e; color:#fff; font-size:0.9rem; font-family:monospace; resize:vertical; white-space:pre; overflow:auto;"></textarea>
+        <div class="emails-row-actions" style="display:flex; flex-direction:column; gap:6px;">
+          <button id="remove-email-btn" class="btn btn-danger btn-sm">Remove</button>
+          <button id="remove-email-all-btn" class="btn btn-danger btn-sm">Remove all</button>
+        </div>
+      </div>
+      <p id="emails-selected" style="color:#aaa; margin-top:6px; font-size:0.8rem;"></p>
+      <p id="emails-status" style="text-align:center; color:#888; margin-top:10px; font-size:0.85rem;"></p>
+
+      <h4 style="color:#e94560; font-size:0.9rem; margin-top:20px; margin-bottom:8px;">Emails without an application <span id="emails-no-app-count" style="color:#aaa; font-weight:normal;"></span></h4>
+      <p style="color:#aaa; font-size:0.85rem; margin-bottom:12px;">Emails not attached to any contestant in the Participants (Applications) section. Click a line to pick one email, or highlight multiple lines (or Ctrl/Cmd+A for all) and click Remove to delete them. Use Remove all to clear the list. Highlighted text can still be copied.</p>
+      <div class="emails-row" style="display:flex; gap:8px; align-items:flex-start;">
+        <textarea id="emails-no-app-dropdown" readonly rows="8" placeholder="Loading emails..." style="flex:1; padding:8px; border-radius:6px; border:1px solid #333; background:#1a1a2e; color:#fff; font-size:0.9rem; font-family:monospace; resize:vertical; white-space:pre; overflow:auto;"></textarea>
+        <div class="emails-row-actions" style="display:flex; flex-direction:column; gap:6px;">
+          <button id="remove-email-no-app-btn" class="btn btn-danger btn-sm">Remove</button>
+          <button id="remove-email-no-app-all-btn" class="btn btn-danger btn-sm">Remove all</button>
+        </div>
+      </div>
+      <p id="emails-no-app-selected" style="color:#aaa; margin-top:6px; font-size:0.8rem;"></p>
+      <p id="emails-no-app-status" style="text-align:center; color:#888; margin-top:10px; font-size:0.85rem;"></p>
+    </div>
+
+    <!-- Contest Live Toggle -->
+    <div class="add-form" style="margin-top: 20px;">
+      <h3>Live</h3>
+      <p style="color:#aaa; font-size:0.85rem; margin-bottom:12px;">Toggle the contest on or off. When off, users and contestants will see a "Contest not Live" message instead of the vote page.</p>
+      <div class="double-votes-toggle-row">
+        <label class="toggle-switch">
+          <input type="checkbox" id="contest-live-toggle" />
+          <span class="toggle-slider"></span>
+        </label>
+        <span id="contest-live-label" class="toggle-label">Off</span>
+      </div>
+      <p id="contest-live-status" style="text-align:center; color:#888; margin-top:10px; font-size:0.85rem;"></p>
+    </div>
+
+    <!-- Find Contestant by Email -->
+    <div class="add-form" style="margin-top: 20px;">
+      <h3>Find Contestant by Email</h3>
+      <p style="color:#aaa; font-size:0.85rem; margin-bottom:12px;">Enter an email address to look up which contestant it belongs to.</p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <input type="email" id="find-by-email-input" placeholder="contestant@email.com" style="flex:1; min-width:220px;" />
+        <button id="find-by-email-btn" class="btn btn-primary btn-sm" type="button">Find</button>
+        <button id="find-by-email-clear-btn" class="btn btn-secondary btn-sm" type="button">Clear</button>
+      </div>
+      <div id="find-by-email-result" style="margin-top:12px;"></div>
+      <p id="find-by-email-status" style="text-align:center; color:#888; margin-top:10px; font-size:0.85rem;"></p>
+    </div>
+
+    <!-- Admin Add Votes -->
+    <div class="add-form" style="margin-top: 20px;">
+      <h3>Admin Vote Adjustment</h3>
+      <p style="color:#aaa; font-size:0.85rem; margin-bottom:12px;">Manually add votes to any contestant. Votes added here are absolute and ignore the 2x multiplier.</p>
+      <div class="form-actions" style="display:flex; gap:10px; justify-content:center;">
+        <button id="add-votes-btn" class="btn btn-primary" type="button">Add Votes</button>
+      </div>
+    </div>
+
+    <!-- Add Votes Modal -->
+    <div id="add-votes-modal" class="modal hidden">
+      <div class="modal-content">
+        <h2>Add Votes</h2>
+        <p style="color:#aaa; font-size:0.85rem; margin-bottom:12px;">Pick a contestant and enter how many votes to add.</p>
+        <label for="add-votes-search">Search</label>
+        <input type="text" id="add-votes-search" placeholder="Filter contestants by name or email..." />
+        <label for="add-votes-select">Contestant</label>
+        <select id="add-votes-select" size="6" style="width:100%; padding:8px; border-radius:6px; border:1px solid #333; background:#1a1a2e; color:#fff; font-size:0.9rem; font-family:inherit;"></select>
+        <label for="add-votes-amount" style="margin-top:12px;">Votes to add</label>
+        <input type="number" id="add-votes-amount" min="1" step="1" value="1" />
+        <div class="modal-actions">
+          <button id="add-votes-submit-btn" class="btn btn-primary" type="button">Add</button>
+          <button id="add-votes-cancel-btn" class="btn btn-secondary" type="button">Cancel</button>
+        </div>
+        <p id="add-votes-error" class="form-error hidden"></p>
+        <p id="add-votes-success" class="form-success hidden"></p>
+      </div>
+    </div>
+
+    <!-- Stripe Sync -->
+    <div class="add-form" style="margin-top: 20px;">
+      <h3>Stripe Payments Sync</h3>
+      <p style="color:#aaa; font-size:0.85rem; margin-bottom:12px;">Paid votes are synced from Stripe automatically every minute. Click below to sync immediately.</p>
+      <div class="form-actions" style="display:flex; gap:10px; justify-content:center;">
+        <button id="stripe-sync-btn" class="btn btn-primary">Sync Stripe Payments Now</button>
+      </div>
+      <p id="stripe-sync-status" style="text-align:center; color:#888; margin-top:10px; font-size:0.85rem;"></p>
+    </div>
+
+    <!-- Timer Controls -->
+    <div class="add-form" style="margin-top: 20px;">
+      <h3>Competition Timer</h3>
+      <div class="timer-controls">
+        <div class="timer-inputs">
+          <div class="timer-field">
+            <label for="timer-days">Days</label>
+            <input type="number" id="timer-days" min="0" max="365" value="0" />
+          </div>
+          <div class="timer-field">
+            <label for="timer-hours">Hours</label>
+            <input type="number" id="timer-hours" min="0" max="23" value="0" />
+          </div>
+          <div class="timer-field">
+            <label for="timer-minutes">Minutes</label>
+            <input type="number" id="timer-minutes" min="0" max="59" value="0" />
+          </div>
+        </div>
+        <div class="form-actions" style="display:flex; gap:10px; justify-content:center;">
+          <button id="set-timer-btn" class="btn btn-primary">Set Timer</button>
+          <button id="clear-timer-btn" class="btn btn-danger btn-sm">Clear Timer</button>
+        </div>
+        <p id="timer-status" style="text-align:center; color:#888; margin-top:10px; font-size:0.85rem;"></p>
+      </div>
+    </div>
+
+    <!-- Participants / Applications -->
+    <div class="add-form" style="margin-top: 20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <h3 style="margin:0;">Participants (Applications)</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button id="mass-email-btn" class="btn btn-primary btn-sm" type="button">Mass Email</button>
+          <button id="individual-mass-email-btn" class="btn btn-primary btn-sm" type="button">Individual Mass Email</button>
+        </div>
+      </div>
+      <p style="color:#aaa; font-size:0.85rem; margin-bottom:12px; margin-top:8px;">View all submitted applications from the Apply page. Use Mass Email to send one shared message, or Individual Mass Email to open a separate pre-filled email for every contestant.</p>
+      <div id="participants-list" class="participants-list">
+        <p style="color:#666;text-align:center;padding:12px;">Loading applications...</p>
+      </div>
+    </div>
+
+    <!-- Mass Email Modal -->
+    <div id="mass-email-modal" class="modal hidden">
+      <div class="modal-content">
+        <h2>Mass Email</h2>
+        <p id="mass-email-recipients-info" style="color:#aaa;font-size:0.85rem;margin-bottom:12px;">Sends to every contestant in the Participants (Applications) list.</p>
+        <label for="mass-email-subject">Subject</label>
+        <input type="text" id="mass-email-subject" placeholder="Email subject" />
+        <label for="mass-email-body">Message</label>
+        <textarea id="mass-email-body" rows="8" placeholder="Write your message..."></textarea>
+        <div class="modal-actions">
+          <button id="mass-email-send-btn" class="btn btn-primary" type="button">Send</button>
+          <button id="mass-email-cancel-btn" class="btn btn-secondary" type="button">Cancel</button>
+        </div>
+        <p id="mass-email-error" class="form-error hidden"></p>
+        <p id="mass-email-success" class="form-success hidden"></p>
+      </div>
+    </div>
+
+    <!-- Site Content Editor -->
+    <div class="add-form" style="margin-top: 20px;">
+      <h3>Site Content Editor</h3>
+      <p style="color:#aaa; font-size:0.85rem; margin-bottom:12px;">Edit headers and text across all pages.</p>
+
+      <h4 style="color:#e94560;font-size:0.9rem;margin-top:16px;margin-bottom:8px;">Landing Page (index.html)</h4>
+      <label for="sc-landing-title">Main Title</label>
+      <input type="text" id="sc-landing-title" placeholder="Chimera X Action Productions" />
+      <label for="sc-landing-headline">Headline</label>
+      <input type="text" id="sc-landing-headline" placeholder="Next Film Lead — Your Vote Decides." />
+      <label for="sc-landing-desc">Description</label>
+      <textarea id="sc-landing-desc" rows="2" placeholder="Description text..."></textarea>
+      <label for="sc-landing-awards">Awards Line</label>
+      <input type="text" id="sc-landing-awards" placeholder="50+ Awards • Your Vote Matters" />
+      <label for="sc-landing-cta">Button Text</label>
+      <input type="text" id="sc-landing-cta" placeholder="LETS DO IT" />
+
+      <h4 style="color:#e94560;font-size:0.9rem;margin-top:20px;margin-bottom:8px;">Vote Page (vote.html)</h4>
+      <label for="sc-vote-title">Page Title</label>
+      <input type="text" id="sc-vote-title" placeholder="NEXT FILM LEAD" />
+      <label for="sc-vote-tagline">Tagline</label>
+      <input type="text" id="sc-vote-tagline" placeholder="Vote for your favorite contestant!" />
+
+      <h4 style="color:#e94560;font-size:0.9rem;margin-top:20px;margin-bottom:8px;">Apply Page</h4>
+      <label for="sc-apply-title">Apply Title</label>
+      <input type="text" id="sc-apply-title" placeholder="ARE YOU THE NEXT LEAD IN AN ACTION FEATURE FILM" />
+      <label for="sc-apply-subtitle">Apply Subtitle</label>
+      <input type="text" id="sc-apply-subtitle" placeholder="In your Bio tell us why..." />
+
+      <h4 style="color:#e94560;font-size:0.9rem;margin-top:20px;margin-bottom:8px;">Contact Page</h4>
+      <label for="sc-contact-title">Contact Title</label>
+      <input type="text" id="sc-contact-title" placeholder="Get in Touch" />
+      <label for="sc-contact-subtitle">Contact Subtitle</label>
+      <input type="text" id="sc-contact-subtitle" placeholder="Have questions about the competition?" />
+
+      <h4 style="color:#e94560;font-size:0.9rem;margin-top:20px;margin-bottom:8px;">Footer</h4>
+      <label for="sc-footer-text">Footer Text</label>
+      <input type="text" id="sc-footer-text" placeholder="© 2026 Chimera X Action Productions..." />
+
+      <div class="form-actions" style="margin-top:16px;">
+        <button id="save-site-content-btn" class="btn btn-primary">Save All Content</button>
+      </div>
+      <p id="sc-success" class="form-success hidden">Content saved!</p>
+      <p id="sc-error" class="form-error hidden">Failed to save content.</p>
+    </div>
+
+    <!-- Add Contestant Form -->
+    <div class="add-form" style="margin-top: 20px;">
+      <h3>Add Contestant</h3>
+      <label for="name-input">Name</label>
+      <input type="text" id="name-input" placeholder="Contestant name" />
+      <label for="bio-input">Bio</label>
+      <textarea id="bio-input" rows="2" placeholder="Short bio..."></textarea>
+      <label for="pic-input">Photo</label>
+      <input type="file" id="pic-input" accept="image/*" />
+      <img id="pic-preview" class="hidden" style="width:120px;height:120px;object-fit:cover;border-radius:8px;margin-top:8px;" />
+      <label for="monologue-input">Monologue Link or Acting Reel</label>
+      <input type="url" id="monologue-input" placeholder="https://youtube.com/..." />
+      <div class="form-actions">
+        <button id="submit-btn" class="btn btn-primary">Add Contestant</button>
+      </div>
+      <p id="form-error" class="form-error hidden"></p>
+      <p id="form-success" class="form-success hidden"></p>
+    </div>
+
+    <!-- Contestants List -->
+    <div class="add-form" style="margin-top: 20px;">
+      <h3>All Contestants</h3>
+      <div id="admin-contestant-list" class="admin-contestant-list"></div>
+    </div>
+
+    <!-- Groups Management -->
+    <div class="add-form" style="margin-top: 20px;">
+      <h3>Groups</h3>
+      <p style="color:#aaa; font-size:0.85rem; margin-bottom:12px;">Create groups and assign contestants to them (e.g. Group 1, Group 2).</p>
+      <div class="groups-new-row" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+        <input type="text" id="new-group-name" placeholder="Group name (e.g. Group 1)" style="flex:1;min-width:180px;" />
+        <button id="create-group-btn" class="btn btn-primary btn-sm">Create Group</button>
+      </div>
+      <div id="groups-list" style="display:flex;flex-direction:column;gap:12px;">
+        <p style="color:#666;text-align:center;padding:12px;">Loading groups...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vote Package Selector Modal -->
+  <div id="vote-modal" class="modal hidden">
+    <div class="modal-content vote-modal-content">
+      <h2>Vote for <span id="vote-modal-name"></span></h2>
+      <div class="vote-options">
+        <button class="vote-option free-vote" data-votes="1">
+          <span class="vote-count">1 Vote</span>
+          <span class="vote-price">FREE</span>
+          <span class="vote-desc">1 free vote per day</span>
+        </button>
+        <button class="vote-option paid-vote" data-amount="5">
+          <span class="vote-count">5 Votes</span>
+          <span class="vote-price">$5</span>
+        </button>
+        <button class="vote-option paid-vote" data-amount="10">
+          <span class="vote-count">10 Votes</span>
+          <span class="vote-price">$10</span>
+        </button>
+        <button class="vote-option paid-vote" data-amount="25">
+          <span class="vote-count">25 Votes</span>
+          <span class="vote-price">$25</span>
+        </button>
+        <button class="vote-option paid-vote" data-amount="50">
+          <span class="vote-count">50 Votes</span>
+          <span class="vote-price">$50</span>
+        </button>
+        <button class="vote-option paid-vote" data-amount="100">
+          <span class="vote-count">100 Votes</span>
+          <span class="vote-price">$100</span>
+        </button>
+        <button class="vote-option paid-vote" data-amount="250">
+          <span class="vote-count">250 Votes</span>
+          <span class="vote-price">$250</span>
+        </button>
+      </div>
+      <button id="vote-modal-close" class="btn btn-secondary">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Contestant Grid -->
+  <div id="app" class="contestant-grid">
+    <p class="loading">Loading contestants...</p>
+  </div>
+
+  <!-- Leaderboard View -->
+  <div id="leaderboard-view" class="leaderboard-view hidden">
+    <div class="leaderboard-container">
+      <h2 class="leaderboard-title">Leaderboard</h2>
+      <p class="leaderboard-subtitle">Live rankings based on total votes</p>
+      <div id="leaderboard-list" class="leaderboard-list"></div>
+    </div>
+  </div>
+
+  <!-- Contact View -->
+  <div id="contact-view" class="contact-view hidden">
+    <div class="contact-container">
+      <h2 class="contact-title">Get in Touch</h2>
+      <p class="contact-subtitle">Have questions about the competition? Reach out to us.</p>
+      <form class='contact-form' id='contact-form' method='POST' name='contact'>
+        <input type="hidden" name="form-name" value="contact" />
+        <p style="display:none">
+          <label>Don't fill this: <input name="bot-field" /></label>
+        </p>
+        <label for="contact-name">Name</label>
+        <input type="text" id="contact-name" name="name" placeholder="Your name" required />
+        <label for="contact-email">Email</label>
+        <input type="email" id="contact-email" name="email" placeholder="your@email.com" required />
+        <label for="contact-message">Message</label>
+        <textarea id="contact-message" name="message" placeholder="Your message..." rows="5" required></textarea>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Send Message</button>
+        </div>
+        <p id="contact-success" class="form-success hidden">Message sent! We'll get back to you soon.</p>
+        <p id="contact-error" class="form-error hidden">Failed to send message. Please try again.</p>
+      </form>
+    </div>
+  </div>
+
+  <!-- Apply View -->
+  <div id="apply-view" class="apply-view hidden">
+    <div class="apply-container">
+      <h2 class="apply-title">ARE YOU THE NEXT LEAD IN AN ACTION FEATURE FILM</h2>
+      <p class="apply-subtitle">In your Bio tell us why you think you'd be the perfect fit.</p>
+
+      <!-- Auth Gate: Sign Up / Login -->
+      <div id="apply-auth-gate" class="apply-auth-gate">
+        <div class="auth-tabs">
+          <button class="auth-tab active" data-auth-tab="signup">Sign Up</button>
+          <button class="auth-tab" data-auth-tab="login">Login</button>
+        </div>
+        <div id="auth-signup-form" class="auth-form-panel">
+          <label for="auth-signup-email">Email</label>
+          <input type="email" id="auth-signup-email" placeholder="your@email.com" required />
+          <label for="auth-signup-password">Password</label>
+          <input type="password" id="auth-signup-password" placeholder="Create a password (min 6 chars)" required />
+          <label for="auth-signup-show-password" class="show-password-toggle">
+            <input type="checkbox" id="auth-signup-show-password" />
+            Show password
+          </label>
+          <div class="form-actions">
+            <button id="auth-signup-btn" class="btn btn-primary">Sign Up</button>
+          </div>
+          <p id="auth-signup-error" class="form-error hidden"></p>
+        </div>
+        <div id="auth-login-form" class="auth-form-panel hidden">
+          <label for="auth-login-email">Email</label>
+          <input type="email" id="auth-login-email" placeholder="your@email.com" required />
+          <label for="auth-login-password">Password</label>
+          <input type="password" id="auth-login-password" placeholder="Your password" required />
+          <label for="auth-login-show-password" class="show-password-toggle">
+            <input type="checkbox" id="auth-login-show-password" />
+            Show password
+          </label>
+          <div class="form-actions">
+            <button id="auth-login-btn" class="btn btn-primary">Login</button>
+          </div>
+          <p id="auth-login-error" class="form-error hidden"></p>
+        </div>
+      </div>
+
+      <!-- Logged-in user bar -->
+      <div id="apply-user-bar" class="apply-user-bar hidden">
+        <span id="apply-user-email"></span>
+        <button id="apply-logout-btn" class="btn btn-secondary btn-sm">Logout</button>
+      </div>
+
+      <form class='apply-form hidden' enctype='multipart/form-data' id='apply-form' method='POST' name='application'>
+        <input type="hidden" name="form-name" value="application" />
+        <p style="display:none">
+          <label>Don't fill this: <input name="bot-field" /></label>
+        </p>
+        <label for="apply-name">Name</label>
+        <input type="text" id="apply-name" name="name" placeholder="Your full name" required />
+        <label for="apply-phone">Phone Number</label>
+        <input type="tel" id="apply-phone" name="phone" placeholder="Your phone number" required />
+        <label for="apply-email">Email</label>
+        <input type="email" id="apply-email" name="email" placeholder="your@email.com" required />
+        <label for="apply-bio">Bio</label>
+        <textarea id="apply-bio" name="bio" placeholder="Tell us about yourself and why you'd be the perfect fit..." rows="5" required></textarea>
+        <label for="apply-blurb">Quick Blurb <span style="color:#888;font-weight:400;font-size:0.8rem;">(max 500 characters)</span></label>
+        <textarea id="apply-blurb" name="blurb" placeholder="A short blurb about yourself that will be displayed on your profile..." rows="3" maxlength="500"></textarea>
+        <p id="apply-blurb-count" style="text-align:right;color:#888;font-size:0.8rem;margin-top:2px;">0 / 500</p>
+        <label for="apply-pic">Your Photo</label>
+        <input type="file" id="apply-pic" name="photo" accept="image/*" required />
+        <img id="apply-pic-preview" class="pic-preview hidden" alt="Preview" />
+        <label for="apply-resume">Resume <span style="color:#888;font-weight:400;font-size:0.8rem;">(PDF, max 5MB)</span></label>
+        <input type="file" id="apply-resume" name="resume" accept=".pdf,application/pdf" />
+        <p id="apply-resume-name" style="color:#d4a84b;font-size:0.8rem;margin-top:4px;" class="hidden"></p>
+        <label for="apply-monologue">Monologue Link or Acting Reel</label>
+        <input type="url" id="apply-monologue" name="monologue_link" placeholder="YouTube, Vimeo, or other video link" />
+        <p class="apply-monologue-hint">Share a link to your monologue video (YouTube, Vimeo, etc.)</p>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Submit Application</button>
+        </div>
+        <p id="apply-success" class="form-success hidden">Application submitted! We'll be in touch soon.</p>
+        <p id="apply-error" class="form-error hidden">Failed to submit application. Please try again.</p>
+      </form>
+    </div>
+  </div>
+
+  <!-- Share Modal -->
+  <div id="share-modal" class="modal hidden">
+    <div class="modal-content share-modal-content">
+      <h2>Share <span id="share-modal-name"></span></h2>
+      <div class="share-buttons">
+        <button class="share-btn share-twitter" id="share-twitter">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          X (Twitter)
+        </button>
+        <button class="share-btn share-facebook" id="share-facebook">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+          Facebook
+        </button>
+        <button class="share-btn share-whatsapp" id="share-whatsapp">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          WhatsApp
+        </button>
+        <button class="share-btn share-instagram" id="share-instagram">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2zm0 1.8A3.95 3.95 0 0 0 3.8 7.75v8.5a3.95 3.95 0 0 0 3.95 3.95h8.5a3.95 3.95 0 0 0 3.95-3.95v-8.5a3.95 3.95 0 0 0-3.95-3.95h-8.5zm8.98 1.4a1.17 1.17 0 1 1 0 2.34 1.17 1.17 0 0 1 0-2.34zM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 1.8a3.2 3.2 0 1 0 0 6.4 3.2 3.2 0 0 0 0-6.4z"/></svg>
+          Instagram
+        </button>
+        <button class="share-btn share-email" id="share-email">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+          Email
+        </button>
+        <button class="share-btn share-copy" id="share-copy">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+          Copy Link
+        </button>
+        <button class="share-btn share-tiktok" id="share-tiktok">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 00-.79-.05A6.34 6.34 0 003.15 15.2a6.34 6.34 0 0010.86 4.46V13.1a8.16 8.16 0 004.77 1.53v-3.44a4.85 4.85 0 01-.81-.07 4.83 4.83 0 01-.38-4.43z"/></svg>
+          TikTok
+        </button>
+      </div>
+      <button id="share-modal-close" class="btn btn-secondary">Close</button>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <p>&copy; 2026 Chimera X Action Productions. All rights reserved.</p>
+  </footer>
+
+  <script src="/old-project/identity-bundle.js"></script>
+  <script src="/old-project/admin-remove-contestant-cache-patch.js"></script>
+  <script src="/old-project/login-password-override-patch.js"></script>
+  <script src="/old-project/app.js"></script>
+  <script src="/old-project/admin-password-patch.js"></script>
+  <script src="/old-project/signup-email-check-patch.js"></script>
+</body>
+</html>
