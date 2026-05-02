@@ -799,7 +799,6 @@
             if (!amount || amount <= 0) return;
             var link = paymentLinks[amount];
             if (!link) {
-              showToast("Payment link unavailable.", true);
               return;
             }
             btn.disabled = true;
@@ -812,19 +811,11 @@
               body: JSON.stringify({ id: votedId, voterEmail: "", votes: amount })
             }).then(function (res) {
               if (!res.ok) {
-                return res.text().then(function (errText) {
-                  var errMsg = "Vote failed";
-                  try { errMsg = JSON.parse(errText).error || errMsg; } catch (e) {}
-                  showToast(errMsg, true);
-                  btn.disabled = false;
-                });
+                btn.disabled = false;
+                return;
               }
-              showToast(amount === 1
-                ? "1 vote cast successfully! Redirecting to payment..."
-                : amount + " votes cast successfully! Redirecting to payment...");
               window.location.href = stripeUrl;
             }).catch(function () {
-              showToast("Vote failed. Please try again.", true);
               btn.disabled = false;
             });
           });
@@ -838,29 +829,12 @@
             body: JSON.stringify({ id: votedId, voterEmail: "", votes: amount })
           }).then(function (res) {
             if (!res.ok) {
-              return res.text().then(function (errText) {
-                var errMsg = "Vote failed";
-                try { errMsg = JSON.parse(errText).error || errMsg; } catch (e) {}
-                showToast(errMsg, true);
-                if (btn) btn.disabled = false;
-              });
+              if (btn) btn.disabled = false;
+              return;
             }
-            return res.json().then(function (data) {
-              var added = (data && typeof data.added === "number") ? data.added : amount;
-              voteModalEl.classList.add("hidden");
-              showToast(added === 1
-                ? "1 vote cast successfully!"
-                : added + " votes cast successfully!");
-              window.location.reload();
-            }).catch(function () {
-              voteModalEl.classList.add("hidden");
-              showToast(amount === 1
-                ? "1 vote cast successfully!"
-                : amount + " votes cast successfully!");
-              window.location.reload();
-            });
+            voteModalEl.classList.add("hidden");
+            window.location.reload();
           }).catch(function () {
-            showToast("Vote failed. Please try again.", true);
             if (btn) btn.disabled = false;
           });
         }
