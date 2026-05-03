@@ -27,11 +27,7 @@
   force = true
 
 # The admin panel's leaderboard and contestant list link each contestant's
-# Profile button to /contestant-details.html?id=<id>, which is a top-level
-# page on the upstream (not under /old-project/). Proxy it so the profile
-# page renders with its data.
-[[redirects]]
-  from = "/contestant-details.html"
-  to = "https://69f54b337755e5d176e2cef9--thenextfilmlead.netlify.app/contestant-details.html"
-  status = 200
-  force = true
+# Profile button to /contestant-details.html?id=<id>. The page is served
+# from this repo (see /contestant-details.html) so it can be customized
+# (e.g. the free-vote daily limit and the "Vote casted" toast). Its
+# /api/* and /old-project/* dependencies are still proxied above.

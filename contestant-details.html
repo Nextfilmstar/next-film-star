@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contestant Profile — NEXT FILM LEAD</title>
+  <link rel="stylesheet" href="/old-project/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    .profile-page {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 30px 20px;
+    }
+    .profile-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: rgba(255,255,255,0.5);
+      text-decoration: none;
+      font-size: 0.9rem;
+      margin-bottom: 24px;
+      transition: color 0.2s;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+    .profile-back:hover { color: #d4a84b; }
+    .profile-card {
+      background: linear-gradient(145deg, #2d2116, #3d3025);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .profile-name-header {
+      padding: 24px 24px 16px;
+      text-align: center;
+    }
+    .profile-name-header h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2.4rem;
+      letter-spacing: 4px;
+      font-weight: 400;
+      color: #d4a84b;
+      margin: 0;
+    }
+    .profile-card img {
+      width: 100%;
+      height: auto;
+      display: block;
+      object-fit: contain;
+      max-height: none;
+    }
+    .profile-rank-section {
+      text-align: center;
+      padding: 24px 24px 8px;
+    }
+    .profile-rank-text {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2.2rem;
+      letter-spacing: 3px;
+      color: #e94560;
+      font-weight: 400;
+      line-height: 1.2;
+    }
+    .profile-rank-number {
+      font-size: 3rem;
+    }
+    .profile-gratitude {
+      text-align: center;
+      padding: 12px 24px 24px;
+      font-size: 0.95rem;
+      color: rgba(255,255,255,0.65);
+      line-height: 1.7;
+      font-style: italic;
+    }
+    .profile-card-body {
+      padding: 12px 24px 32px;
+    }
+    .profile-card-body .profile-vote-message {
+      font-size: 1.05rem;
+      color: #e6dccb;
+      margin-bottom: 12px;
+      line-height: 1.5;
+      font-weight: 600;
+      text-align: center;
+    }
+    .profile-card-body .profile-vote-link {
+      font-size: 0.9rem;
+      margin-bottom: 16px;
+      line-height: 1.5;
+      text-align: center;
+      word-break: break-all;
+    }
+    .profile-card-body .profile-vote-link a {
+      color: #d4a84b;
+      text-decoration: underline;
+    }
+    .profile-card-body .profile-resume {
+      margin-top: 16px;
+    }
+    .profile-card-body .profile-resume a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #d4a84b;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border: 1px solid rgba(212,168,75,0.4);
+      padding: 8px 18px;
+      border-radius: 2px;
+      transition: all 0.2s;
+    }
+    .profile-card-body .profile-resume a:hover {
+      background: rgba(212,168,75,0.1);
+      border-color: #d4a84b;
+    }
+    .profile-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .profile-vote-btn {
+      flex: 1;
+      padding: 14px;
+      background: linear-gradient(to right, #b8922f, #d4a84b, #b8922f);
+      color: #000;
+      border: none;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: 2px;
+      transition: all 0.2s;
+    }
+    .profile-vote-btn:hover:not(:disabled) {
+      background: linear-gradient(to right, #e8c574, #e8c574, #e8c574);
+    }
+    .profile-vote-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      filter: grayscale(100%);
+    }
+    .profile-share-btn {
+      padding: 14px 24px;
+      background: #3d3025;
+      color: rgba(255,255,255,0.6);
+      border: none;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: 2px;
+      transition: all 0.2s;
+    }
+    .profile-share-btn:hover { background: #4d3f32; }
+    .profile-loading {
+      text-align: center;
+      color: rgba(255,255,255,0.3);
+      padding: 80px 20px;
+      font-size: 1.1rem;
+    }
+    .profile-error {
+      text-align: center;
+      color: #e07040;
+      padding: 80px 20px;
+      font-size: 1.1rem;
+    }
+    .profile-countdown {
+      text-align: center;
+      padding: 16px 20px;
+      margin: 0 0 20px;
+      background: linear-gradient(135deg, #2d2116, #3d3025);
+      border: 1px solid rgba(212, 168, 75, 0.2);
+      border-radius: 2px;
+    }
+    .profile-countdown.hidden { display: none; }
+    .profile-countdown-label {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1rem;
+      color: rgba(255, 255, 255, 0.5);
+      text-transform: uppercase;
+      letter-spacing: 4px;
+      margin-bottom: 10px;
+    }
+    .profile-countdown-display {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+    .profile-countdown-unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 60px;
+    }
+    .profile-countdown-unit span {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 400;
+      color: #d4a84b;
+      line-height: 1;
+    }
+    .profile-countdown-unit small {
+      font-size: 0.7rem;
+      color: rgba(255, 255, 255, 0.4);
+      text-transform: uppercase;
+      margin-top: 4px;
+      letter-spacing: 0.1em;
+    }
+    .profile-countdown-sep {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: rgba(212, 168, 75, 0.3);
+      margin-top: -12px;
+    }
+    @media (max-width: 480px) {
+      .profile-countdown-unit { min-width: 48px; }
+      .profile-countdown-unit span { font-size: 1.7rem; }
+      .profile-countdown-sep { font-size: 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>NEXT FILM LEAD</h1>
+    <p class="tagline">Contestant Profile</p>
+    <nav class="header-nav">
+      <a class="nav-btn" href="/" style="text-decoration:none;">Home</a>
+      <a class="nav-btn" href="/vote" style="text-decoration:none;">Contestants</a>
+      <a class="nav-btn" href="/vote" style="text-decoration:none;">Leaderboard</a>
+    </nav>
+  </header>
+
+  <div class="profile-page">
+    <button class="profile-back" onclick="history.back()">&#8592; Back</button>
+    <div id="profile-countdown" class="profile-countdown hidden">
+      <div class="profile-countdown-label">Competition Ends In</div>
+      <div class="profile-countdown-display">
+        <div class="profile-countdown-unit"><span id="profile-cd-days">00</span><small>Days</small></div>
+        <div class="profile-countdown-sep">:</div>
+        <div class="profile-countdown-unit"><span id="profile-cd-hours">00</span><small>Hours</small></div>
+        <div class="profile-countdown-sep">:</div>
+        <div class="profile-countdown-unit"><span id="profile-cd-mins">00</span><small>Minutes</small></div>
+        <div class="profile-countdown-sep">:</div>
+        <div class="profile-countdown-unit"><span id="profile-cd-secs">00</span><small>Seconds</small></div>
+      </div>
+    </div>
+    <div id="profile-content">
+      <p class="profile-loading">Loading profile...</p>
+    </div>
+  </div>
+
+  <!-- Vote Package Selector Modal -->
+  <div id="vote-modal" class="modal hidden">
+    <div class="modal-content vote-modal-content">
+      <h2>Vote for <span id="vote-modal-name"></span></h2>
+      <div class="vote-options">
+        <button class="vote-option free-vote" data-votes="1">
+          <span class="vote-count">1 Vote</span>
+          <span class="vote-price">FREE</span>
+          <span class="vote-desc">1 free vote per day</span>
+        </button>
+        <button class="vote-option paid-vote" data-amount="5">
+          <span class="vote-count">5 Votes</span>
+          <span class="vote-price">$5</span>
+        </button>
+        <button class="vote-option paid-vote" data-amount="10">
+          <span class="vote-count">10 Votes</span>
+          <span class="vote-price">$10</span>
+        </button>
+        <button class="vote-option paid-vote" data-amount="25">
+          <span class="vote-count">25 Votes</span>
+          <span class="vote-price">$25</span>
+        </button>
+        <button class="vote-option paid-vote" data-amount="50">
+          <span class="vote-count">50 Votes</span>
+          <span class="vote-price">$50</span>
+        </button>
+        <button class="vote-option paid-vote" data-amount="100">
+          <span class="vote-count">100 Votes</span>
+          <span class="vote-price">$100</span>
+        </button>
+        <button class="vote-option paid-vote" data-amount="250">
+          <span class="vote-count">250 Votes</span>
+          <span class="vote-price">$250</span>
+        </button>
+      </div>
+      <button id="vote-modal-close" class="btn btn-secondary">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Share Modal (same as contestants page) -->
+  <div id="share-modal" class="modal hidden">
+    <div class="modal-content share-modal-content">
+      <h2>Share <span id="share-modal-name"></span></h2>
+      <p class="share-paste-hint" style="color: #d32f2f; font-size: 0.85rem; font-weight: 700; margin: 0 0 0.75rem;">After clicking on media, click "Ctrl V" to paste into the media once loaded</p>
+      <div class="share-buttons">
+        <button class="share-btn share-twitter" id="share-twitter">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          X (Twitter)
+        </button>
+        <button class="share-btn share-facebook" id="share-facebook">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+          Facebook
+        </button>
+        <button class="share-btn share-whatsapp" id="share-whatsapp">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          WhatsApp
+        </button>
+        <button class="share-btn share-instagram" id="share-instagram">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2zm0 1.8A3.95 3.95 0 0 0 3.8 7.75v8.5a3.95 3.95 0 0 0 3.95 3.95h8.5a3.95 3.95 0 0 0 3.95-3.95v-8.5a3.95 3.95 0 0 0-3.95-3.95h-8.5zm8.98 1.4a1.17 1.17 0 1 1 0 2.34 1.17 1.17 0 0 1 0-2.34zM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 1.8a3.2 3.2 0 1 0 0 6.4 3.2 3.2 0 0 0 0-6.4z"/></svg>
+          Instagram
+        </button>
+        <button class="share-btn share-email" id="share-email">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+          Email
+        </button>
+        <button class="share-btn share-copy" id="share-copy">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+          Copy Link
+        </button>
+        <button class="share-btn share-tiktok" id="share-tiktok">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 00-.79-.05A6.34 6.34 0 003.15 15.2a6.34 6.34 0 0010.86 4.46V13.1a8.16 8.16 0 004.77 1.53v-3.44a4.85 4.85 0 01-.81-.07 4.83 4.83 0 01-.38-4.43z"/></svg>
+          TikTok
+        </button>
+      </div>
+      <button id="share-modal-close" class="btn btn-secondary">Close</button>
+    </div>
+  </div>
+
+
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var id = params.get("id");
+      var container = document.getElementById("profile-content");
+
+      // --- Competition Timer Countdown ---
+      var countdownEl = document.getElementById("profile-countdown");
+      var cdDaysEl = document.getElementById("profile-cd-days");
+      var cdHoursEl = document.getElementById("profile-cd-hours");
+      var cdMinsEl = document.getElementById("profile-cd-mins");
+      var cdSecsEl = document.getElementById("profile-cd-secs");
+      var timerEndTime = null;
+      var timerInterval = null;
+
+      function pad2(n) { return n < 10 ? "0" + n : "" + n; }
+
+      function updateProfileCountdown() {
+        if (!timerEndTime) {
+          countdownEl.classList.add("hidden");
+          return;
+        }
+        var diff = timerEndTime - Date.now();
+        if (diff <= 0) {
+          cdDaysEl.textContent = "00";
+          cdHoursEl.textContent = "00";
+          cdMinsEl.textContent = "00";
+          cdSecsEl.textContent = "00";
+          countdownEl.classList.remove("hidden");
+          if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+          return;
+        }
+        cdDaysEl.textContent = pad2(Math.floor(diff / 86400000));
+        cdHoursEl.textContent = pad2(Math.floor((diff % 86400000) / 3600000));
+        cdMinsEl.textContent = pad2(Math.floor((diff % 3600000) / 60000));
+        cdSecsEl.textContent = pad2(Math.floor((diff % 60000) / 1000));
+        countdownEl.classList.remove("hidden");
+      }
+
+      fetch("/api/timer").then(function (res) {
+        return res.ok ? res.json() : null;
+      }).then(function (data) {
+        if (!data || !data.endTime) return;
+        var t = new Date(data.endTime).getTime();
+        if (!isFinite(t)) return;
+        timerEndTime = t;
+        updateProfileCountdown();
+        if (timerEndTime > Date.now()) {
+          timerInterval = setInterval(updateProfileCountdown, 1000);
+        }
+      }).catch(function () {});
+
+      if (!id) {
+        container.innerHTML = '<p class="profile-error">No contestant ID provided.</p>';
+        return;
+      }
+
+      // Fetch the contestant and all contestants (for ranking) in parallel
+      Promise.all([
+        fetch("/api/contestants/" + encodeURIComponent(id)).then(function (res) {
+          if (!res.ok) throw new Error("Not found");
+          return res.json();
+        }),
+        fetch("/api/contestants").then(function (res) {
+          return res.ok ? res.json() : [];
+        }),
+        fetch("/api/groups").then(function (res) {
+          return res.ok ? res.json() : [];
+        })
+      ]).then(function (results) {
+        var c = results[0];
+        var allContestants = results[1];
+        var allGroups = results[2];
+
+        document.title = c.name + " — NEXT FILM LEAD";
+
+        // Determine the contestant's rank within their group (or overall)
+        var rank = null;
+        var groupContestants = allContestants;
+
+        // Find which group this contestant belongs to
+        var contestantGroup = null;
+        if (allGroups && allGroups.length > 0) {
+          for (var g = 0; g < allGroups.length; g++) {
+            var group = allGroups[g];
+            if (group && Array.isArray(group.contestantIds)) {
+              for (var ci = 0; ci < group.contestantIds.length; ci++) {
+                var gid = group.contestantIds[ci];
+                var normalizedGid = (gid || "").toString().trim().toLowerCase();
+                var normalizedId = (c.id || id).toString().trim().toLowerCase();
+                if (normalizedGid === normalizedId) {
+                  contestantGroup = group;
+                  break;
+                }
+              }
+            }
+            if (contestantGroup) break;
+          }
+        }
+
+        if (contestantGroup && Array.isArray(contestantGroup.contestantIds)) {
+          // Filter to only contestants in this group
+          var groupIdSet = {};
+          contestantGroup.contestantIds.forEach(function (gid) {
+            groupIdSet[(gid || "").toString().trim().toLowerCase()] = true;
+          });
+          groupContestants = allContestants.filter(function (ct) {
+            return groupIdSet[(ct.id || "").toString().trim().toLowerCase()];
+          });
+        }
+
+        // Sort by votes descending
+        groupContestants.sort(function (a, b) { return (b.votes || 0) - (a.votes || 0); });
+
+        // Find rank
+        var normalizedTargetId = (c.id || id).toString().trim().toLowerCase();
+        for (var r = 0; r < groupContestants.length; r++) {
+          if ((groupContestants[r].id || "").toString().trim().toLowerCase() === normalizedTargetId) {
+            rank = r + 1;
+            break;
+          }
+        }
+
+        var imgSrc = c.image || c.photoData || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='700' height='400' fill='%23333'%3E%3Crect width='700' height='400'/%3E%3Ctext x='350' y='200' text-anchor='middle' fill='%23666' font-size='18'%3ENo Photo%3C/text%3E%3C/svg%3E";
+
+        var html = '<div class="profile-card">';
+
+        // Name above the photo
+        html += '<div class="profile-name-header">';
+        html += '<h1>' + (c.name || "Unknown") + '</h1>';
+        html += '</div>';
+
+        // Photo - fits fully in screen
+        html += '<img src="' + imgSrc + '" alt="' + (c.name || "Contestant") + '" />';
+
+        // Ranking section below photo
+        var hasVotes = (Number(c.votes) || 0) > 0;
+        if (rank !== null) {
+          html += '<div class="profile-rank-section">';
+          if (hasVotes) {
+            html += '<div class="profile-rank-text">CURRENTLY RANKED AT <span class="profile-rank-number">#' + rank + '</span></div>';
+          } else {
+            html += '<div class="profile-rank-text">CURRENTLY NOT RANKED</div>';
+          }
+          html += '</div>';
+        }
+
+        // Gratitude message
+        html += '<div class="profile-gratitude">';
+        html += "I'm incredibly grateful for your support and your vote. It honestly means more than you know. This journey wouldn't be possible without people like you standing behind me.";
+        html += '</div>';
+
+        html += '<div class="profile-card-body">';
+
+        html += '<p class="profile-vote-message">Please Vote for ' + (c.name || "this contestant") + ', help them achieve there dream</p>';
+
+        if (c.monologue_link) {
+          html += '<div class="profile-monologue-link"><strong>Monologue:</strong> <a href="' + c.monologue_link + '" target="_blank" rel="noopener noreferrer">' + c.monologue_link + '</a></div>';
+        }
+
+        html += '<div class="profile-actions">';
+        html += '<button class="profile-vote-btn" id="profile-vote-btn">Vote Now</button>';
+        html += '<button class="profile-share-btn" id="profile-share-media-btn">Share to Media</button>';
+        html += '</div>';
+        html += '</div></div>';
+
+        container.innerHTML = html;
+
+        // Vote button — open vote modal (same as contestant card vote button)
+        var paymentLinks = {
+          5: "https://buy.stripe.com/4gM9AT3F6feK59k6IWdAk07",
+          10: "https://buy.stripe.com/3cIfZha3u3w21X8c3gdAk08",
+          25: "https://buy.stripe.com/28E5kDdfG5EaatEd7kdAk09",
+          50: "https://buy.stripe.com/7sY9AT1wY4A61X87N0dAk0a",
+          100: "https://buy.stripe.com/6oU8wP3F68Qm59kaZcdAk0b",
+          250: "https://buy.stripe.com/4gMcN52B27MiatE9V8dAk0c"
+        };
+
+        var selectedContestantId = null;
+        var voteModalEl = document.getElementById("vote-modal");
+        var voteModalNameEl = document.getElementById("vote-modal-name");
+        var voteModalCloseEl = document.getElementById("vote-modal-close");
+
+        function showToast(msg, isError) {
+          var existing = document.querySelector(".toast");
+          if (existing) existing.remove();
+          var el = document.createElement("div");
+          el.className = "toast" + (isError ? " error" : "");
+          el.textContent = msg;
+          document.body.appendChild(el);
+          setTimeout(function () { el.remove(); }, 3000);
+        }
+
+        function openVoteModal(contestantId) {
+          selectedContestantId = contestantId;
+          voteModalNameEl.textContent = c.name;
+          voteModalEl.classList.remove("hidden");
+        }
+
+        document.getElementById("profile-vote-btn").addEventListener("click", function () {
+          openVoteModal(c.id || id);
+        });
+
+        // Disable Vote Now button if user is logged in (flag set before navigation)
+        try {
+          if (sessionStorage.getItem("nfsLoggedInForProfile") === "1") {
+            var voteBtn = document.getElementById("profile-vote-btn");
+            voteBtn.disabled = true;
+            sessionStorage.removeItem("nfsLoggedInForProfile");
+          }
+        } catch (e) {}
+
+        // Share button — open modal (same as contestants page)
+        var shareModal = document.getElementById("share-modal");
+        var shareModalName = document.getElementById("share-modal-name");
+        var shareModalClose = document.getElementById("share-modal-close");
+
+        var shareText = "Vote for " + c.name + " " + window.location.href;
+        function getRichShareText() {
+          try { return buildSharePlainText(); } catch (e) { return shareText; }
+        }
+
+        function escapeHtmlAttr(value) {
+          return String(value == null ? "" : value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+        }
+
+        function buildShareHtml() {
+          var pageUrl = window.location.href;
+          var photoSrc = c.image || c.photoData || (window.location.origin + "/api/contestant-photo?id=" + encodeURIComponent(c.id || id));
+          var name = escapeHtmlAttr(c.name || "Contestant");
+          var safeUrl = escapeHtmlAttr(pageUrl);
+          var safePhoto = escapeHtmlAttr(photoSrc);
+
+          var doc = '<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a;background:#1d1610;padding:24px;border-radius:4px;">';
+          doc += '<div style="text-align:center;margin-bottom:12px;">';
+          doc += '<a href="' + safeUrl + '" style="display:inline-block;text-decoration:none;">';
+          doc += '<img src="' + safePhoto + '" alt="' + name + '" style="width:140px;height:140px;display:block;margin:0 auto;border:0;border-radius:50%;object-fit:cover;" />';
+          doc += '</a>';
+          doc += '</div>';
+          doc += '<div style="text-align:center;margin-bottom:16px;">';
+          doc += '<a href="' + safeUrl + '" style="text-decoration:none;color:#d4a84b;">';
+          doc += '<h1 style="font-family:Arial Black,Arial,sans-serif;font-size:30px;letter-spacing:4px;color:#d4a84b;margin:0;text-transform:uppercase;">' + name + '</h1>';
+          doc += '</a>';
+          doc += '<div style="font-size:13px;letter-spacing:3px;color:#bda77a;margin-top:6px;text-transform:uppercase;">Next Film Lead</div>';
+          doc += '</div>';
+          doc += '<a href="' + safeUrl + '" style="display:block;text-decoration:none;">';
+          doc += '<img src="' + safePhoto + '" alt="' + name + '" style="width:100%;max-width:600px;display:block;border:0;border-radius:4px;" />';
+          doc += '</a>';
+
+          if (rank !== null) {
+            doc += '<div style="text-align:center;margin:18px 0 6px;">';
+            if (hasVotes) {
+              doc += '<span style="font-family:Arial Black,Arial,sans-serif;font-size:22px;letter-spacing:2px;color:#e94560;text-transform:uppercase;">Currently Ranked </span>';
+              doc += '<span style="font-family:Arial Black,Arial,sans-serif;font-size:32px;color:#e94560;">#' + rank + '</span>';
+            } else {
+              doc += '<span style="font-family:Arial Black,Arial,sans-serif;font-size:22px;letter-spacing:2px;color:#e94560;text-transform:uppercase;">Currently Not Ranked</span>';
+            }
+            doc += '</div>';
+          }
+
+          doc += '<p style="text-align:center;font-style:italic;color:#cfc4b3;line-height:1.7;margin:8px 0 18px;font-size:14px;">';
+          doc += "I'm incredibly grateful for your support and your vote. It honestly means more than you know. This journey wouldn't be possible without people like you standing behind me.";
+          doc += '</p>';
+
+          if (c.blurb || c.bio) {
+            // Bio and blurb intentionally omitted from shared content
+          }
+          var voteMsg = "Please Vote for " + (c.name || "this contestant") + ", help them achieve there dream";
+          doc += '<p style="text-align:center;color:#e6dccb;line-height:1.6;margin:18px 0 8px;font-size:16px;font-weight:600;">' + escapeHtmlAttr(voteMsg) + '</p>';
+          doc += '<p style="text-align:center;margin:0 0 18px;font-size:14px;">';
+          doc += '<a href="' + safeUrl + '" style="color:#d4a84b;text-decoration:underline;word-break:break-all;">' + safeUrl + '</a>';
+          doc += '</p>';
+          if (c.monologue_link) {
+            doc += '<p style="margin:14px 0;color:#cfc4b3;font-size:14px;">';
+            doc += '<strong style="color:#d4a84b;">Monologue:</strong> ';
+            doc += '<a href="' + escapeHtmlAttr(c.monologue_link) + '" style="color:#d4a84b;">Watch monologue</a>';
+            doc += '</p>';
+          }
+          if (c.email) {
+            doc += '<p style="margin:14px 0;color:#cfc4b3;font-size:14px;">';
+            doc += '<strong style="color:#d4a84b;">Contact:</strong> ';
+            doc += '<a href="mailto:' + escapeHtmlAttr(c.email) + '" style="color:#d4a84b;">' + escapeHtmlAttr(c.email) + '</a>';
+            doc += '</p>';
+          }
+
+          doc += '<p style="text-align:center;margin:24px 0 0;">';
+          doc += '<a href="' + safeUrl + '" style="display:inline-block;background:#d4a84b;color:#000;text-decoration:none;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:14px 32px;border-radius:2px;font-family:Arial,Helvetica,sans-serif;font-size:14px;">Vote for ' + name + '</a>';
+          doc += '</p>';
+          doc += '</div>';
+          return doc;
+        }
+
+        function buildSharePlainText() {
+          var lines = [];
+          lines.push((c.name || "Contestant") + " — NEXT FILM LEAD");
+          if (rank !== null) lines.push(hasVotes ? ("Currently Ranked #" + rank) : "Currently Not Ranked");
+          lines.push("");
+          lines.push("I'm incredibly grateful for your support and your vote. It honestly means more than you know. This journey wouldn't be possible without people like you standing behind me.");
+          if (c.blurb) { /* bio and blurb intentionally omitted */ }
+          if (c.bio) { /* bio and blurb intentionally omitted */ }
+          lines.push("");
+          lines.push("Please Vote for " + (c.name || "this contestant") + ", help them achieve there dream");
+          lines.push(window.location.href);
+          return lines.join("\n");
+        }
+
+        function copyRichShare() {
+          var html = buildShareHtml();
+          var plain = buildSharePlainText();
+          if (navigator.clipboard && typeof window.ClipboardItem === "function" && navigator.clipboard.write) {
+            try {
+              var item = new window.ClipboardItem({
+                "text/html": new Blob([html], { type: "text/html" }),
+                "text/plain": new Blob([plain], { type: "text/plain" })
+              });
+              return navigator.clipboard.write([item]).then(function () {
+                showToast("Profile copied! Paste into email or messaging.");
+              }).catch(function () {
+                fallbackCopyHtml(html, plain);
+              });
+            } catch (e) {
+              fallbackCopyHtml(html, plain);
+              return Promise.resolve();
+            }
+          }
+          fallbackCopyHtml(html, plain);
+          return Promise.resolve();
+        }
+
+        function fallbackCopyHtml(html, plain) {
+          try {
+            var holder = document.createElement("div");
+            holder.contentEditable = "true";
+            holder.style.position = "absolute";
+            holder.style.left = "-9999px";
+            holder.style.top = "0";
+            holder.innerHTML = html;
+            document.body.appendChild(holder);
+            var range = document.createRange();
+            range.selectNodeContents(holder);
+            var sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+            var ok = document.execCommand("copy");
+            sel.removeAllRanges();
+            document.body.removeChild(holder);
+            if (ok) {
+              showToast("Profile copied! Paste into email or messaging.");
+            } else {
+              throw new Error("execCommand copy failed");
+            }
+          } catch (e) {
+            try {
+              var ta = document.createElement("textarea");
+              ta.value = plain;
+              ta.setAttribute("readonly", "");
+              ta.style.position = "absolute";
+              ta.style.left = "-9999px";
+              document.body.appendChild(ta);
+              ta.select();
+              document.execCommand("copy");
+              document.body.removeChild(ta);
+              showToast("Profile copied! Paste into email or messaging.");
+            } catch (err) {
+              showToast("Failed to copy profile.", true);
+            }
+          }
+        }
+
+        document.getElementById("profile-share-media-btn").addEventListener("click", function () {
+          shareModalName.textContent = c.name || "Contestant";
+          shareModal.classList.remove("hidden");
+        });
+
+        shareModalClose.addEventListener("click", function () {
+          shareModal.classList.add("hidden");
+        });
+
+        shareModal.addEventListener("click", function (e) {
+          if (e.target === shareModal) {
+            shareModal.classList.add("hidden");
+          }
+        });
+
+        document.getElementById("share-twitter").addEventListener("click", function () {
+          copyRichShare();
+          window.open("https://twitter.com/intent/tweet?text=" + encodeURIComponent(getRichShareText()), "_blank");
+        });
+
+        document.getElementById("share-facebook").addEventListener("click", function () {
+          copyRichShare();
+          window.open("https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(window.location.href) + "&quote=" + encodeURIComponent(getRichShareText()), "_blank");
+        });
+
+        document.getElementById("share-whatsapp").addEventListener("click", function () {
+          copyRichShare();
+          window.open("https://wa.me/?text=" + encodeURIComponent(getRichShareText()), "_blank");
+        });
+
+        document.getElementById("share-instagram").addEventListener("click", function () {
+          Promise.resolve(copyRichShare()).then(function () {
+            showToast("Profile copied — paste it into your Instagram caption.");
+            window.open("https://www.instagram.com/", "_blank");
+          });
+        });
+
+        document.getElementById("share-copy").addEventListener("click", function () {
+          copyRichShare();
+          shareModal.classList.add("hidden");
+        });
+
+        document.getElementById("share-email").addEventListener("click", function () {
+          copyRichShare();
+          var subject = "Vote for " + c.name;
+          var body = getRichShareText();
+          var to = c.email ? encodeURIComponent(c.email) : "";
+          window.location.href = "mailto:" + to + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+        });
+
+        document.getElementById("share-tiktok").addEventListener("click", function () {
+          Promise.resolve(copyRichShare()).then(function () {
+            showToast("Profile copied — paste it into your TikTok caption.");
+            window.open("https://www.tiktok.com/", "_blank");
+          });
+        });
+
+        // Vote modal close handlers
+        voteModalCloseEl.addEventListener("click", function () {
+          voteModalEl.classList.add("hidden");
+          selectedContestantId = null;
+        });
+
+        voteModalEl.addEventListener("click", function (e) {
+          if (e.target === voteModalEl) {
+            voteModalEl.classList.add("hidden");
+            selectedContestantId = null;
+          }
+        });
+
+        // Free vote
+        document.querySelector(".free-vote").addEventListener("click", function () {
+          if (!selectedContestantId) return;
+          castFreeVote(selectedContestantId);
+        });
+
+        // Paid votes — redirect to Stripe checkout. Votes are only added
+        // to the contestant once Stripe confirms the payment via the
+        // webhook (see netlify/functions/stripe-webhook.mts). This prevents
+        // votes from being credited if the user abandons the checkout.
+        document.querySelectorAll(".paid-vote").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            if (!selectedContestantId) return;
+            var amount = parseInt(btn.getAttribute("data-amount"));
+            if (!amount || amount <= 0) return;
+            var contestantId = selectedContestantId;
+            var link = paymentLinks[amount];
+
+            btn.disabled = true;
+
+            if (link) {
+              window.location.href = link + "?client_reference_id=" + contestantId;
+            } else {
+              voteModalEl.classList.add("hidden");
+              btn.disabled = false;
+            }
+          });
+        });
+
+        // Cast free vote
+        function castFreeVote(votedId) {
+          var last = localStorage.getItem("lastFreeVoteDate");
+          var today = new Date().toDateString();
+
+          if (last === today) {
+            showToast("You already used your free vote today! Come back tomorrow.", true);
+            voteModalEl.classList.add("hidden");
+            return;
+          }
+
+          fetch("/api/vote", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: votedId, voterEmail: "" })
+          }).then(function (res) {
+            if (!res.ok) {
+              return res.text().then(function (errText) {
+                var errMsg = "Vote failed";
+                try { errMsg = JSON.parse(errText).error || errMsg; } catch (e) {}
+                showToast(errMsg, true);
+              });
+            }
+            localStorage.setItem("lastFreeVoteDate", today);
+            showToast("Vote casted");
+            // Hold the confirmation on screen for a moment before closing
+            // the modal and reloading the page to refresh vote count/rank.
+            setTimeout(function () {
+              voteModalEl.classList.add("hidden");
+              window.location.reload();
+            }, 2500);
+          }).catch(function () {
+            showToast("Vote failed. Please try again.", true);
+          });
+        }
+
+      }).catch(function () {
+        container.innerHTML = '<p class="profile-error">Contestant not found.</p>';
+      });
+    })();
+  </script>
+
+</body>
+</html>
