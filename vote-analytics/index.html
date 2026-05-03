@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vote Analytics — Next Film Lead Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Poppins', Arial, sans-serif;
+      background: #1a1a2e;
+      color: #f4f4f4;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .wrap { max-width: 980px; margin: 0 auto; }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px; margin-bottom: 24px;
+    }
+    .topbar a {
+      color: #e94560; text-decoration: none; font-weight: 600; font-size: 0.9rem;
+      letter-spacing: 0.05em; text-transform: uppercase;
+    }
+    .topbar a:hover { text-decoration: underline; }
+    h1 {
+      font-size: 1.8rem; font-weight: 700; margin-bottom: 6px;
+    }
+    .sub {
+      color: #aaa; font-size: 0.95rem; margin-bottom: 24px;
+    }
+    .stats {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px; margin-bottom: 28px;
+    }
+    .stat-card {
+      background: #20243a; border: 1px solid #2c3050;
+      border-radius: 10px; padding: 18px;
+    }
+    .stat-card .label {
+      font-size: 0.75rem; color: #aaa; text-transform: uppercase;
+      letter-spacing: 0.1em; margin-bottom: 8px;
+    }
+    .stat-card .value {
+      font-size: 1.8rem; font-weight: 700; color: #fff;
+    }
+    .stat-card .value.accent { color: #e94560; }
+    h2 {
+      font-size: 1.15rem; margin: 28px 0 12px; font-weight: 600;
+    }
+    .panel {
+      background: #20243a; border: 1px solid #2c3050;
+      border-radius: 10px; overflow: hidden;
+    }
+    table {
+      width: 100%; border-collapse: collapse; font-size: 0.92rem;
+    }
+    th, td {
+      padding: 12px 16px; text-align: left;
+      border-bottom: 1px solid #2c3050;
+    }
+    th {
+      background: #181b2e; font-size: 0.75rem;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: #aaa; font-weight: 600;
+    }
+    tr:last-child td { border-bottom: none; }
+    .empty {
+      padding: 28px 18px; text-align: center; color: #888;
+    }
+    .note {
+      background: #20243a; border-left: 3px solid #e94560;
+      padding: 14px 16px; border-radius: 6px;
+      font-size: 0.85rem; color: #c8c8c8; margin-bottom: 24px;
+      line-height: 1.45;
+    }
+    .err {
+      background: #3a1c25; border-left: 3px solid #e94560;
+      padding: 14px 16px; border-radius: 6px; color: #ffd0d6;
+    }
+    .pill {
+      display: inline-block; padding: 2px 10px;
+      border-radius: 999px; font-size: 0.72rem;
+      background: #2c3050; color: #cfd2ee;
+    }
+    .num { font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <a href="/old-project/vote.html">← Back to Admin Panel</a>
+      <span class="pill">Vote Analytics</span>
+    </div>
+
+    <h1 id="title">Vote Analytics</h1>
+    <p class="sub" id="subtitle">Loading contestant…</p>
+
+    <div class="note">
+      Tracks votes recorded through the website's vote buttons (free and paid). Voter identity is collected
+      via a verification form (name + email) before the vote is processed or the user is sent to Stripe.
+      Admin-added votes from the "Vote Adjustment" tool are grouped under their own label. Stripe-paid votes
+      that reconcile in the background still appear here, captured at the moment the user clicked "Continue".
+    </div>
+
+    <div id="error" class="err" style="display:none;"></div>
+
+    <div class="stats" id="stats" style="display:none;">
+      <div class="stat-card">
+        <div class="label">Total Votes (Recorded)</div>
+        <div class="value accent num" id="stat-total">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Unique Voters</div>
+        <div class="value num" id="stat-unique">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Vote Events</div>
+        <div class="value num" id="stat-events">0</div>
+      </div>
+    </div>
+
+    <h2>Voters</h2>
+    <div class="panel">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th class="num">Votes Added</th>
+            <th class="num">Events</th>
+            <th>First Vote</th>
+            <th>Last Vote</th>
+          </tr>
+        </thead>
+        <tbody id="voters-body">
+          <tr><td colspan="6" class="empty">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Recent Vote Events</h2>
+    <div class="panel">
+      <table>
+        <thead>
+          <tr>
+            <th>When</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th class="num">Votes</th>
+          </tr>
+        </thead>
+        <tbody id="events-body">
+          <tr><td colspan="4" class="empty">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var contestantId = params.get("id") || "";
+      var contestantName = params.get("name") || "";
+
+      var titleEl = document.getElementById("title");
+      var subEl = document.getElementById("subtitle");
+      var errEl = document.getElementById("error");
+      var statsEl = document.getElementById("stats");
+      var statTotal = document.getElementById("stat-total");
+      var statUnique = document.getElementById("stat-unique");
+      var statEvents = document.getElementById("stat-events");
+      var votersBody = document.getElementById("voters-body");
+      var eventsBody = document.getElementById("events-body");
+
+      function showError(msg) {
+        errEl.textContent = msg;
+        errEl.style.display = "block";
+      }
+
+      function escapeHtml(s) {
+        return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+        });
+      }
+
+      function formatDate(iso) {
+        if (!iso) return "—";
+        try {
+          var d = new Date(iso);
+          if (isNaN(d.getTime())) return "—";
+          return d.toLocaleString();
+        } catch (e) { return "—"; }
+      }
+
+      function voterLabel(email) {
+        if (!email) return "(unknown)";
+        if (email === "admin@nextfilmlead") return "Admin (manual adjustment)";
+        if (email === "anonymous@nextfilmlead") return "Anonymous (not logged in)";
+        return email;
+      }
+
+      function nameLabel(email, name) {
+        if (name && String(name).trim()) return String(name).trim();
+        if (email === "admin@nextfilmlead") return "Admin";
+        if (email === "anonymous@nextfilmlead") return "Anonymous";
+        return "—";
+      }
+
+      if (!contestantId) {
+        titleEl.textContent = "Vote Analytics";
+        subEl.textContent = "";
+        showError("Missing contestant id. Open this page from the Admin Panel \"Vote Analytics\" button.");
+        votersBody.innerHTML = '<tr><td colspan="6" class="empty">No contestant selected.</td></tr>';
+        eventsBody.innerHTML = '<tr><td colspan="4" class="empty">No contestant selected.</td></tr>';
+        return;
+      }
+
+      titleEl.textContent = contestantName
+        ? "Vote Analytics — " + contestantName
+        : "Vote Analytics";
+      subEl.textContent = "Contestant ID: " + contestantId;
+
+      fetch("/api/vote-events?contestantId=" + encodeURIComponent(contestantId), {
+        headers: { "Accept": "application/json" }
+      })
+        .then(function (res) {
+          if (!res.ok) {
+            return res.text().then(function (t) {
+              throw new Error("Server returned " + res.status + (t ? ": " + t : ""));
+            });
+          }
+          return res.json();
+        })
+        .then(function (data) {
+          var voters = (data && data.voters) || [];
+          var events = (data && data.events) || [];
+          var total = (data && typeof data.totalTrackedVotes === "number") ? data.totalTrackedVotes : 0;
+
+          statsEl.style.display = "grid";
+          statTotal.textContent = total;
+          statUnique.textContent = voters.length;
+          statEvents.textContent = events.length;
+
+          if (!voters.length) {
+            votersBody.innerHTML = '<tr><td colspan="6" class="empty">No voter activity recorded yet for this contestant.</td></tr>';
+          } else {
+            votersBody.innerHTML = voters.map(function (v) {
+              return "<tr>" +
+                "<td>" + escapeHtml(nameLabel(v.voter_email, v.voter_name)) + "</td>" +
+                "<td>" + escapeHtml(voterLabel(v.voter_email)) + "</td>" +
+                '<td class="num">' + (v.total_votes || 0) + "</td>" +
+                '<td class="num">' + (v.event_count || 0) + "</td>" +
+                "<td>" + escapeHtml(formatDate(v.first_voted_at)) + "</td>" +
+                "<td>" + escapeHtml(formatDate(v.last_voted_at)) + "</td>" +
+              "</tr>";
+            }).join("");
+          }
+
+          if (!events.length) {
+            eventsBody.innerHTML = '<tr><td colspan="4" class="empty">No vote events recorded yet.</td></tr>';
+          } else {
+            eventsBody.innerHTML = events.map(function (e) {
+              return "<tr>" +
+                "<td>" + escapeHtml(formatDate(e.voted_at)) + "</td>" +
+                "<td>" + escapeHtml(nameLabel(e.voter_email, e.voter_name)) + "</td>" +
+                "<td>" + escapeHtml(voterLabel(e.voter_email)) + "</td>" +
+                '<td class="num">' + (e.votes_added || 0) + "</td>" +
+              "</tr>";
+            }).join("");
+          }
+        })
+        .catch(function (err) {
+          showError("Failed to load vote analytics. " + (err && err.message ? err.message : ""));
+          votersBody.innerHTML = '<tr><td colspan="6" class="empty">Could not load voters.</td></tr>';
+          eventsBody.innerHTML = '<tr><td colspan="4" class="empty">Could not load events.</td></tr>';
+        });
+    })();
+  </script>
+</body>
+</html>
