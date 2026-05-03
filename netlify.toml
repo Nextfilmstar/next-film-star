@@ -1,6 +1,14 @@
 [build]
   publish = "."
 
+# Local Vote Analytics endpoint, served by the Netlify Function in this repo.
+# Must come BEFORE the forced /api/* proxy so this takes precedence.
+[[redirects]]
+  from = "/api/vote-events"
+  to = "/.netlify/functions/vote-events"
+  status = 200
+  force = true
+
 # Proxy the API and TanStack Start server-function endpoints to the
 # upstream deploy that hosts the live back-end and database.
 # Status 200 = transparent proxy (the user's URL bar stays on this site).
@@ -16,10 +24,22 @@
   status = 200
   force = true
 
+# Locally-overridden file: serve our copy of app.js (which adds the Vote
+# Analytics button to the Admin Panel's Participants section and records
+# vote events). This MUST come before the /old-project/* proxy below, with
+# force = true, otherwise the catchall proxy wins and the upstream copy is
+# served. The `to` path is a relative path that resolves to the static file
+# of the same name in the publish directory.
+[[redirects]]
+  from = "/old-project/app.js"
+  to = "/old-project/app.js"
+  status = 200
+  force = true
+
 # The post-login Admin button and the vote page link to /old-project/vote.html
-# (and its sibling /old-project/style.css, /old-project/app.js,
-# /old-project/identity-bundle.js). Proxy them to the same upstream so the
-# admin dashboard and the vote page render with their data and credentials.
+# (and its sibling /old-project/style.css, /old-project/identity-bundle.js).
+# Proxy everything else under /old-project/ to the upstream so the admin
+# dashboard and the vote page render with their data and credentials.
 [[redirects]]
   from = "/old-project/*"
   to = "https://69f54b337755e5d176e2cef9--thenextfilmlead.netlify.app/old-project/:splat"
@@ -27,11 +47,14 @@
   force = true
 
 # The admin panel's leaderboard and contestant list link each contestant's
-# Profile button to /contestant-details.html?id=<id>, which is a top-level
-# page on the upstream (not under /old-project/). Proxy it so the profile
-# page renders with its data.
+# Profile button to /contestant-details.html?id=<id>. We serve a locally
+# overridden copy of this page (which adds the voter verification modal and
+# records vote events) by forcing a same-path rewrite, mirroring the
+# /old-project/app.js trick above. Without `force = true`, the publish
+# directory's static file would be served, but the explicit rule keeps the
+# behavior unambiguous and prevents any accidental fall-through to a proxy.
 [[redirects]]
   from = "/contestant-details.html"
-  to = "https://69f54b337755e5d176e2cef9--thenextfilmlead.netlify.app/contestant-details.html"
+  to = "/contestant-details.html"
   status = 200
   force = true
