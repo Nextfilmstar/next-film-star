@@ -374,6 +374,7 @@
     if (isAdmin()) {
       adminPanel.classList.toggle("hidden", currentView !== "admin");
       adminToggle.textContent = "Admin";
+      ensureParticipantSearchUI();
       renderAdminList();
       loadParticipants();
       populateSiteContentForm();
@@ -382,6 +383,59 @@
       adminPanel.classList.add("hidden");
       adminToggle.textContent = "Admin";
     }
+  }
+
+  // --- Admin: Search Contestant by Name ---
+  function ensureParticipantSearchUI() {
+    if (!adminPanel || document.getElementById("participant-search-box")) return;
+    var wrap = document.createElement("div");
+    wrap.id = "participant-search-box";
+    wrap.style.cssText = "display:flex;gap:8px;align-items:center;margin:0 0 16px 0;padding:12px;background:#f5f5f5;border:1px solid #e0e0e0;border-radius:8px;flex-wrap:wrap;";
+    wrap.innerHTML =
+      '<label for="participant-search-input" style="font-weight:600;color:#333;font-size:14px;">Search contestant:</label>' +
+      '<input id="participant-search-input" type="text" placeholder="Type a name..." ' +
+      'style="flex:1;min-width:160px;padding:8px 12px;border:1px solid #ccc;border-radius:6px;font-size:14px;" />' +
+      '<button id="participant-search-btn" type="button" class="btn btn-primary" style="white-space:nowrap;">Search</button>' +
+      '<div id="participant-search-status" style="flex-basis:100%;color:#b00020;font-size:13px;min-height:0;"></div>';
+    adminPanel.insertBefore(wrap, adminPanel.firstChild);
+
+    var input = wrap.querySelector("#participant-search-input");
+    var btn = wrap.querySelector("#participant-search-btn");
+    var status = wrap.querySelector("#participant-search-status");
+
+    function runSearch() {
+      status.textContent = "";
+      var q = (input.value || "").trim().toLowerCase();
+      if (!q) {
+        status.textContent = "Please enter a name to search.";
+        return;
+      }
+      var cards = document.querySelectorAll("#participants-list .participant-card");
+      var found = null;
+      for (var i = 0; i < cards.length; i++) {
+        var h = cards[i].querySelector("h4");
+        var name = h ? (h.textContent || "").trim().toLowerCase() : "";
+        if (name.indexOf(q) !== -1) { found = cards[i]; break; }
+      }
+      if (!found) {
+        status.textContent = 'No contestant found matching "' + input.value.trim() + '".';
+        return;
+      }
+      found.scrollIntoView({ behavior: "smooth", block: "center" });
+      var prevBoxShadow = found.style.boxShadow;
+      var prevTransition = found.style.transition;
+      found.style.transition = "box-shadow 0.6s ease";
+      found.style.boxShadow = "0 0 0 3px #ffd54f";
+      setTimeout(function () {
+        found.style.boxShadow = prevBoxShadow;
+        setTimeout(function () { found.style.transition = prevTransition; }, 600);
+      }, 1800);
+    }
+
+    btn.addEventListener("click", runSearch);
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); runSearch(); }
+    });
   }
 
   adminToggle.addEventListener("click", function () {
