@@ -3854,6 +3854,13 @@
     });
   }
 
+  function goToVoteAnalytics(contestantId, contestantName, highlightEmail) {
+    var qs = "?id=" + encodeURIComponent(contestantId) +
+             "&name=" + encodeURIComponent(contestantName || "") +
+             "&highlight=" + encodeURIComponent(highlightEmail || "");
+    window.location.href = "/vote-analytics/" + qs;
+  }
+
   function findContestantByEmail() {
     if (!isAdmin()) return;
     if (!findByEmailResult || !findByEmailStatus || !findByEmailInput) return;
@@ -3868,60 +3875,56 @@
     }
     var target = raw.toLowerCase();
 
-    var contestant = (currentContestants || []).find(function (c) {
-      return c && c.email && String(c.email).toLowerCase().trim() === target;
-    });
+    findByEmailStatus.textContent = "Searching vote analytics…";
+    if (findByEmailBtn) findByEmailBtn.disabled = true;
 
-    var application = (currentApplications || []).find(function (a) {
-      return a && a.email && String(a.email).toLowerCase().trim() === target;
-    });
-
-    if (!contestant && !application) {
-      findByEmailStatus.textContent = "No contestant or applicant found for that email.";
-      return;
-    }
-
-    var person = contestant || application;
-    var groupNames = [];
-    if (contestant) {
-      (allGroups || []).forEach(function (g) {
-        if (groupHasContestant(g, contestant.id)) {
-          groupNames.push(g.groupNumber ? "Group " + g.groupNumber : (g.name || "Group"));
+    fetch("/api/vote-events?voterEmail=" + encodeURIComponent(target), {
+      headers: { "Accept": "application/json" }
+    })
+      .then(function (res) {
+        if (!res.ok) {
+          return res.text().then(function (t) {
+            throw new Error("Server returned " + res.status + (t ? ": " + t : ""));
+          });
         }
+        return res.json();
+      })
+      .then(function (data) {
+        var matches = (data && data.matches) || [];
+        if (matches.length === 0) {
+          findByEmailStatus.textContent = "No vote analytics activity found for that email.";
+          return;
+        }
+        if (matches.length === 1) {
+          var only = matches[0];
+          findByEmailStatus.textContent = "Opening Vote Analytics for " + (only.contestant_name || only.contestant_id) + "…";
+          goToVoteAnalytics(only.contestant_id, only.contestant_name || "", target);
+          return;
+        }
+
+        findByEmailStatus.textContent = "Found in " + matches.length + " contestants' vote analytics. Pick one:";
+        var items = matches.map(function (m) {
+          var label = (m.contestant_name || m.contestant_id) +
+            " — " + (m.total_votes || 0) + " votes (" + (m.event_count || 0) + " events)";
+          return '<button type="button" class="find-by-email-match" data-id="' +
+            escapeHtml(m.contestant_id) + '" data-name="' + escapeHtml(m.contestant_name || "") +
+            '" style="display:block; width:100%; text-align:left; background:#2d2116; border:1px solid rgba(255,255,255,0.15); border-radius:6px; padding:10px 12px; margin:6px 0; color:#eee; cursor:pointer; font:inherit;">' +
+            escapeHtml(label) + '</button>';
+        }).join("");
+        findByEmailResult.innerHTML = items;
+        var buttons = findByEmailResult.querySelectorAll(".find-by-email-match");
+        for (var i = 0; i < buttons.length; i++) {
+          buttons[i].addEventListener("click", function () {
+            goToVoteAnalytics(this.getAttribute("data-id"), this.getAttribute("data-name"), target);
+          });
+        }
+      })
+      .catch(function (err) {
+        findByEmailStatus.textContent = "Search failed. " + (err && err.message ? err.message : "");
+      })
+      .then(function () {
+        if (findByEmailBtn) findByEmailBtn.disabled = false;
       });
-    }
-
-    var photo = "";
-    if (contestant && (contestant.image || contestant.photoData)) {
-      photo = '<img src="' + escapeHtml(contestant.image || contestant.photoData) + '" alt="" style="width:80px;height:80px;object-fit:cover;border-radius:8px;flex-shrink:0;" />';
-    } else if (application && (application.photoData || application.hasPhoto)) {
-      var photoSrc = application.photoData || ("/api/application-photo?id=" + encodeURIComponent(application.id || application.userId || application._blobKey));
-      photo = '<img src="' + escapeHtml(photoSrc) + '" alt="" style="width:80px;height:80px;object-fit:cover;border-radius:8px;flex-shrink:0;" />';
-    }
-
-    var rows = [];
-    rows.push('<div><strong>Name:</strong> ' + escapeHtml(person.name || "(no name)") + '</div>');
-    rows.push('<div><strong>Email:</strong> ' + escapeHtml(person.email || "") + '</div>');
-    if (person.phone) rows.push('<div><strong>Phone:</strong> ' + escapeHtml(person.phone) + '</div>');
-    if (contestant) {
-      rows.push('<div><strong>Contestant ID:</strong> ' + escapeHtml(contestant.id) + '</div>');
-      rows.push('<div><strong>Votes:</strong> ' + (contestant.votes || 0) + '</div>');
-      if (groupNames.length > 0) {
-        rows.push('<div><strong>Group:</strong> ' + escapeHtml(groupNames.join(", ")) + '</div>');
-      }
-    } else {
-      rows.push('<div><em>This email is on an application but is not yet an active contestant.</em></div>');
-    }
-    if (person.bio) rows.push('<div style="margin-top:6px;"><strong>Bio:</strong> ' + escapeHtml(person.bio) + '</div>');
-
-    findByEmailResult.innerHTML =
-      '<div style="display:flex; gap:14px; align-items:flex-start; background:#2d2116; border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:12px;">' +
-        photo +
-        '<div style="flex:1; min-width:0; line-height:1.6; font-size:0.9rem; color:#eee;">' + rows.join("") + '</div>' +
-      '</div>';
-    findByEmailStatus.textContent = contestant
-      ? "Match found in contestants."
-      : "Match found in applications (not yet a contestant).";
   }
 
   if (findByEmailBtn) {

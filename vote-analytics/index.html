@@ -86,6 +86,11 @@
       background: #2c3050; color: #cfd2ee;
     }
     .num { font-variant-numeric: tabular-nums; }
+    tr.highlight td {
+      background: #3a2a18;
+      box-shadow: inset 3px 0 0 0 #e94560;
+    }
+    tr.highlight td:first-child { color: #ffd9b3; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -164,6 +169,7 @@
       var params = new URLSearchParams(window.location.search);
       var contestantId = params.get("id") || "";
       var contestantName = params.get("name") || "";
+      var highlightEmail = (params.get("highlight") || "").trim().toLowerCase();
 
       var titleEl = document.getElementById("title");
       var subEl = document.getElementById("subtitle");
@@ -248,7 +254,8 @@
             votersBody.innerHTML = '<tr><td colspan="6" class="empty">No voter activity recorded yet for this contestant.</td></tr>';
           } else {
             votersBody.innerHTML = voters.map(function (v) {
-              return "<tr>" +
+              var isMatch = highlightEmail && String(v.voter_email || "").toLowerCase() === highlightEmail;
+              return "<tr" + (isMatch ? ' class="highlight"' : "") + ">" +
                 "<td>" + escapeHtml(nameLabel(v.voter_email, v.voter_name)) + "</td>" +
                 "<td>" + escapeHtml(voterLabel(v.voter_email)) + "</td>" +
                 '<td class="num">' + (v.total_votes || 0) + "</td>" +
@@ -263,13 +270,21 @@
             eventsBody.innerHTML = '<tr><td colspan="4" class="empty">No vote events recorded yet.</td></tr>';
           } else {
             eventsBody.innerHTML = events.map(function (e) {
-              return "<tr>" +
+              var isMatch = highlightEmail && String(e.voter_email || "").toLowerCase() === highlightEmail;
+              return "<tr" + (isMatch ? ' class="highlight"' : "") + ">" +
                 "<td>" + escapeHtml(formatDate(e.voted_at)) + "</td>" +
                 "<td>" + escapeHtml(nameLabel(e.voter_email, e.voter_name)) + "</td>" +
                 "<td>" + escapeHtml(voterLabel(e.voter_email)) + "</td>" +
                 '<td class="num">' + (e.votes_added || 0) + "</td>" +
               "</tr>";
             }).join("");
+          }
+
+          if (highlightEmail) {
+            var firstHighlight = document.querySelector("tr.highlight");
+            if (firstHighlight && typeof firstHighlight.scrollIntoView === "function") {
+              firstHighlight.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
           }
         })
         .catch(function (err) {

@@ -46,6 +46,38 @@ export default async (req: Request) => {
   if (req.method === "GET") {
     const url = new URL(req.url);
     const contestantId = url.searchParams.get("contestantId");
+    const voterEmailParam = url.searchParams.get("voterEmail");
+
+    if (!contestantId && voterEmailParam) {
+      const voterEmail = voterEmailParam.trim().toLowerCase();
+      if (!voterEmail) {
+        return Response.json(
+          { error: "voterEmail must be a non-empty string" },
+          { status: 400 },
+        );
+      }
+
+      const matches = await db.sql`
+        SELECT
+          contestant_id,
+          MAX(contestant_name) AS contestant_name,
+          MAX(voter_name) AS voter_name,
+          SUM(votes_added)::int AS total_votes,
+          COUNT(*)::int AS event_count,
+          MIN(voted_at) AS first_voted_at,
+          MAX(voted_at) AS last_voted_at
+        FROM vote_events
+        WHERE voter_email = ${voterEmail}
+        GROUP BY contestant_id
+        ORDER BY total_votes DESC, last_voted_at DESC
+      `;
+
+      return Response.json({
+        voterEmail,
+        matchCount: matches.length,
+        matches,
+      });
+    }
 
     if (!contestantId) {
       return Response.json(
