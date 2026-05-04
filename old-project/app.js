@@ -56,6 +56,8 @@
   var picInput = document.getElementById("pic-input");
   var picPreview = document.getElementById("pic-preview");
   var monologueInput = document.getElementById("monologue-input");
+  var emailInput = null;
+  var passwordInput = null;
   var submitBtn = document.getElementById("submit-btn");
   var formError = document.getElementById("form-error");
   var formSuccess = document.getElementById("form-success");
@@ -375,6 +377,8 @@
       adminPanel.classList.toggle("hidden", currentView !== "admin");
       adminToggle.textContent = "Admin";
       ensureParticipantSearchUI();
+      ensureContestantEmailField();
+      ensureContestantPasswordField();
       renderAdminList();
       loadParticipants();
       populateSiteContentForm();
@@ -436,6 +440,49 @@
     input.addEventListener("keydown", function (e) {
       if (e.key === "Enter") { e.preventDefault(); runSearch(); }
     });
+  }
+
+  // --- Admin: Add Contestant email field ---
+  function ensureContestantEmailField() {
+    if (emailInput && document.body.contains(emailInput)) return;
+    var existing = document.getElementById("email-input");
+    if (existing) { emailInput = existing; return; }
+    if (!monologueInput || !monologueInput.parentNode) return;
+    var label = document.createElement("label");
+    label.setAttribute("for", "email-input");
+    label.textContent = "Email";
+    var input = document.createElement("input");
+    input.type = "email";
+    input.id = "email-input";
+    input.placeholder = "contestant@example.com";
+    input.autocomplete = "email";
+    var anchor = monologueInput.nextSibling;
+    monologueInput.parentNode.insertBefore(label, anchor);
+    monologueInput.parentNode.insertBefore(input, anchor);
+    emailInput = input;
+  }
+
+  // --- Admin: Add Contestant login password field ---
+  function ensureContestantPasswordField() {
+    if (passwordInput && document.body.contains(passwordInput)) return;
+    var existing = document.getElementById("contestant-password-input");
+    if (existing) { passwordInput = existing; return; }
+    if (!emailInput || !emailInput.parentNode) {
+      ensureContestantEmailField();
+      if (!emailInput || !emailInput.parentNode) return;
+    }
+    var label = document.createElement("label");
+    label.setAttribute("for", "contestant-password-input");
+    label.textContent = "Login Password";
+    var input = document.createElement("input");
+    input.type = "password";
+    input.id = "contestant-password-input";
+    input.placeholder = "Set a password for contestant login";
+    input.autocomplete = "new-password";
+    var anchor = emailInput.nextSibling;
+    emailInput.parentNode.insertBefore(label, anchor);
+    emailInput.parentNode.insertBefore(input, anchor);
+    passwordInput = input;
   }
 
   adminToggle.addEventListener("click", function () {
@@ -658,9 +705,13 @@
 
   if (submitBtn) {
   submitBtn.addEventListener("click", async function () {
+    ensureContestantEmailField();
+    ensureContestantPasswordField();
     var name = nameInput.value.trim();
     var bio = bioInput.value.trim();
     var file = picInput.files[0];
+    var email = emailInput ? emailInput.value.trim() : "";
+    var password = passwordInput ? passwordInput.value : "";
 
     formError.classList.add("hidden");
     formSuccess.classList.add("hidden");
@@ -672,6 +723,21 @@
     }
     if (!file) {
       formError.textContent = "Please select a photo.";
+      formError.classList.remove("hidden");
+      return;
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      formError.textContent = "Please enter a valid email address.";
+      formError.classList.remove("hidden");
+      return;
+    }
+    if (password && password.length < 4) {
+      formError.textContent = "Login password must be at least 4 characters.";
+      formError.classList.remove("hidden");
+      return;
+    }
+    if (password && !email) {
+      formError.textContent = "Please enter an email address to go with the login password.";
       formError.classList.remove("hidden");
       return;
     }
@@ -713,6 +779,9 @@
         body: JSON.stringify({
           name: name,
           bio: bio,
+          email: email,
+          password: password,
+          login_password: password,
           photoData: base64,
           monologue_link: monologueInput ? monologueInput.value.trim() : ""
         })
@@ -729,6 +798,8 @@
       bioInput.value = "";
       picInput.value = "";
       if (monologueInput) monologueInput.value = "";
+      if (emailInput) emailInput.value = "";
+      if (passwordInput) passwordInput.value = "";
       picPreview.classList.add("hidden");
       formSuccess.textContent = name + " added successfully!";
       formSuccess.classList.remove("hidden");
