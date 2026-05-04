@@ -771,7 +771,10 @@
       adminContestantList.innerHTML = '<p style="color:#666;text-align:center;padding:12px;">No contestants yet.</p>';
       return;
     }
-    currentContestants.forEach(function (c) {
+    var sortedContestants = currentContestants.slice().sort(function (a, b) {
+      return (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+    });
+    sortedContestants.forEach(function (c) {
       var item = document.createElement("div");
       item.className = "admin-contestant-item";
       item.setAttribute("data-contestant-id", c.id);
