@@ -933,10 +933,11 @@
 
   // --- Free Vote ---
   async function castFreeVote(id) {
+    var admin = isAdmin();
     var last = localStorage.getItem("lastFreeVoteDate");
     var today = new Date().toDateString();
 
-    if (last === today) {
+    if (!admin && last === today) {
       showToast("You already used your free vote today! Come back tomorrow.", true);
       voteModal.classList.add("hidden");
       return;
@@ -957,10 +958,12 @@
         return;
       }
 
-      localStorage.setItem("lastFreeVoteDate", today);
-      voteModal.classList.add("hidden");
-      showToast("Vote cast successfully!");
-      try { recordVoteEvent(id, 1); } catch (e) {}
+      if (!admin) {
+        localStorage.setItem("lastFreeVoteDate", today);
+        voteModal.classList.add("hidden");
+      }
+      showToast(admin ? "Admin free vote cast!" : "Vote cast successfully!");
+      try { recordVoteEvent(id, 1, admin ? "admin" : undefined); } catch (e) {}
       loadContestants();
     } catch (err) {
       showToast("Vote failed. Please try again.", true);
