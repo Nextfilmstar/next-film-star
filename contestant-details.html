@@ -934,30 +934,29 @@
           });
         });
 
-        // Paid votes — show verification modal, record event, credit the
-        // contestant with the matching number of votes, then redirect to
-        // Stripe for payment.
+        // Paid votes — show verification modal, then immediately credit the
+        // contestant with the matching number of votes (5/10/25/...). No
+        // confirmation message is shown.
         document.querySelectorAll(".paid-vote").forEach(function (btn) {
           btn.addEventListener("click", function () {
             if (!selectedContestantId) return;
             var amount = parseInt(btn.getAttribute("data-amount"));
             if (!amount || amount <= 0) return;
             var contestantId = selectedContestantId;
-            var stripeUrl = paymentLinks[amount];
-            if (!stripeUrl) return;
             btn.disabled = true;
             openVerifyModal({
-              summary: amount + " votes ($" + amount + ") for " + (c.name || "this contestant"),
+              summary: amount + " votes for " + (c.name || "this contestant"),
               onCancel: function () { btn.disabled = false; },
               onConfirm: function (info) {
                 recordVoteEvent(contestantId, c.name, info, amount);
                 voteModalEl.classList.add("hidden");
                 castVotes(contestantId, info.email, amount);
-                var sep = stripeUrl.indexOf("?") === -1 ? "?" : "&";
-                var url = stripeUrl
-                  + sep + "client_reference_id=" + encodeURIComponent(contestantId)
-                  + "&prefilled_email=" + encodeURIComponent(info.email);
-                window.location.href = url;
+                var link = paymentLinks[amount];
+                if (link) {
+                  window.location.href = link + "?client_reference_id=" + contestantId;
+                } else {
+                  setTimeout(function () { window.location.reload(); }, 1500);
+                }
               }
             });
           });
