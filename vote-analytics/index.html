@@ -67,6 +67,15 @@
       color: #aaa; font-weight: 600;
     }
     tr:last-child td { border-bottom: none; }
+    tfoot td {
+      background: #181b2e; font-weight: 600;
+      border-top: 2px solid #2c3050; border-bottom: none;
+      color: #fff;
+    }
+    tfoot td.label-cell {
+      text-transform: uppercase; letter-spacing: 0.08em;
+      font-size: 0.78rem; color: #aaa;
+    }
     .empty {
       padding: 28px 18px; text-align: center; color: #888;
     }
@@ -143,6 +152,14 @@
         <tbody id="voters-body">
           <tr><td colspan="6" class="empty">Loading…</td></tr>
         </tbody>
+        <tfoot id="voters-foot" style="display:none;">
+          <tr>
+            <td colspan="2" class="label-cell">Total</td>
+            <td class="num" id="voters-total-votes">0</td>
+            <td class="num" id="voters-total-events">0</td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
       </table>
     </div>
 
@@ -179,6 +196,9 @@
       var statUnique = document.getElementById("stat-unique");
       var statEvents = document.getElementById("stat-events");
       var votersBody = document.getElementById("voters-body");
+      var votersFoot = document.getElementById("voters-foot");
+      var votersTotalVotes = document.getElementById("voters-total-votes");
+      var votersTotalEvents = document.getElementById("voters-total-events");
       var eventsBody = document.getElementById("events-body");
 
       function showError(msg) {
@@ -252,6 +272,7 @@
 
           if (!voters.length) {
             votersBody.innerHTML = '<tr><td colspan="6" class="empty">No voter activity recorded yet for this contestant.</td></tr>';
+            votersFoot.style.display = "none";
           } else {
             votersBody.innerHTML = voters.map(function (v) {
               var isMatch = highlightEmail && String(v.voter_email || "").toLowerCase() === highlightEmail;
@@ -264,6 +285,12 @@
                 "<td>" + escapeHtml(formatDate(v.last_voted_at)) + "</td>" +
               "</tr>";
             }).join("");
+
+            var sumVotes = voters.reduce(function (acc, v) { return acc + (Number(v.total_votes) || 0); }, 0);
+            var sumEvents = voters.reduce(function (acc, v) { return acc + (Number(v.event_count) || 0); }, 0);
+            votersTotalVotes.textContent = sumVotes;
+            votersTotalEvents.textContent = sumEvents;
+            votersFoot.style.display = "";
           }
 
           if (!events.length) {
