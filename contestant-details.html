@@ -343,6 +343,77 @@
       border-radius: 2px;
       font-family: 'Inter', system-ui, sans-serif;
     }
+
+    .vote-option.any-amount-vote {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+      padding: 14px;
+      cursor: default;
+      background: rgba(0,0,0,0.25);
+      border: 1px solid rgba(212,168,75,0.35);
+    }
+    .vote-option.any-amount-vote .vote-count {
+      text-align: center;
+    }
+    .vote-option.any-amount-vote .vote-desc {
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.55);
+      text-align: center;
+      letter-spacing: 0.05em;
+    }
+    .any-amount-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.12);
+      padding: 8px 12px;
+      border-radius: 2px;
+    }
+    .any-amount-prefix {
+      color: #d4a84b;
+      font-weight: 700;
+      font-size: 1.05rem;
+    }
+    #any-amount-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #fff;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 1rem;
+      padding: 4px 0;
+      width: 100%;
+    }
+    #any-amount-input::-webkit-outer-spin-button,
+    #any-amount-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .any-amount-submit {
+      padding: 12px;
+      background: linear-gradient(to right, #b8922f, #d4a84b, #b8922f);
+      color: #000;
+      border: none;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: 2px;
+      transition: all 0.2s;
+    }
+    .any-amount-submit:hover:not(:disabled) {
+      background: linear-gradient(to right, #e8c574, #e8c574, #e8c574);
+    }
+    .any-amount-submit:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
@@ -410,6 +481,15 @@
           <span class="vote-count">250 Votes</span>
           <span class="vote-price">$250</span>
         </button>
+        <div class="vote-option any-amount-vote">
+          <span class="vote-count">Any Amount</span>
+          <label for="any-amount-input" class="vote-desc">Enter the amount you wish to pay (USD)</label>
+          <div class="any-amount-row">
+            <span class="any-amount-prefix">$</span>
+            <input id="any-amount-input" type="number" min="1" step="1" inputmode="numeric" placeholder="Enter amount" />
+          </div>
+          <button id="any-amount-submit" type="button" class="any-amount-submit">Continue to Stripe</button>
+        </div>
       </div>
       <button id="vote-modal-close" class="btn btn-secondary">Cancel</button>
     </div>
@@ -669,6 +749,10 @@
         function openVoteModal(contestantId) {
           selectedContestantId = contestantId;
           voteModalNameEl.textContent = c.name;
+          var anyAmt = document.getElementById("any-amount-input");
+          if (anyAmt) anyAmt.value = "";
+          var anyBtn = document.getElementById("any-amount-submit");
+          if (anyBtn) anyBtn.disabled = false;
           voteModalEl.classList.remove("hidden");
         }
 
@@ -960,6 +1044,40 @@
               }
             });
           });
+        });
+
+        // Any-amount vote — user types a custom dollar amount; redirect to
+        // Stripe with `prefilled_amount` (cents) so the chosen amount is
+        // reflected on the Stripe checkout page when it loads.
+        var anyAmountInput = document.getElementById("any-amount-input");
+        var anyAmountSubmit = document.getElementById("any-amount-submit");
+        anyAmountSubmit.addEventListener("click", function () {
+          if (!selectedContestantId) return;
+          var raw = (anyAmountInput.value || "").trim();
+          var amount = parseInt(raw, 10);
+          if (!amount || amount <= 0 || isNaN(amount)) {
+            anyAmountInput.focus();
+            return;
+          }
+          var contestantId = selectedContestantId;
+          anyAmountSubmit.disabled = true;
+          openVerifyModal({
+            summary: amount + " votes for " + (c.name || "this contestant"),
+            onCancel: function () { anyAmountSubmit.disabled = false; },
+            onConfirm: function (info) {
+              recordVoteEvent(contestantId, c.name, info, amount);
+              voteModalEl.classList.add("hidden");
+              castVotes(contestantId, info.email, amount);
+              var baseLink = paymentLinks[amount] || paymentLinks[5];
+              var sep = baseLink.indexOf("?") === -1 ? "?" : "&";
+              window.location.href = baseLink
+                + sep + "prefilled_amount=" + (amount * 100)
+                + "&client_reference_id=" + contestantId;
+            }
+          });
+        });
+        anyAmountInput.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") { e.preventDefault(); anyAmountSubmit.click(); }
         });
 
         // --- Verification Modal & Vote Event Recording ---
