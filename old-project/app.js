@@ -2360,6 +2360,25 @@
     individualMassEmailBtn.addEventListener("click", openIndividualMassEmails);
   }
 
+  // --- All Vote Analytics button (sits beside the Mail buttons in
+  // Participants (Applications)). Renders every contestant's analytics on
+  // the Vote Analytics page in "all" mode.
+  (function injectAllVoteAnalyticsButton() {
+    if (document.getElementById("all-vote-analytics-btn")) return;
+    var anchorBtn = individualMassEmailBtn || massEmailBtn;
+    if (!anchorBtn || !anchorBtn.parentNode) return;
+    var allAnalyticsBtn = document.createElement("button");
+    allAnalyticsBtn.id = "all-vote-analytics-btn";
+    allAnalyticsBtn.type = "button";
+    allAnalyticsBtn.className = anchorBtn.className || "btn btn-secondary";
+    allAnalyticsBtn.textContent = "All Vote Analytics";
+    allAnalyticsBtn.title = "View vote analytics for every contestant on one page";
+    allAnalyticsBtn.addEventListener("click", function () {
+      window.location.href = "/vote-analytics/?all=1";
+    });
+    anchorBtn.parentNode.insertBefore(allAnalyticsBtn, anchorBtn.nextSibling);
+  })();
+
   async function acceptApplicant(app, btn) {
     if (app.accepted) {
       btn.textContent = "accepted";
