@@ -1046,9 +1046,11 @@
           });
         });
 
-        // Any-amount vote — user types a custom dollar amount; redirect to
-        // Stripe with `prefilled_amount` (cents) so the chosen amount is
-        // reflected on the Stripe checkout page when it loads.
+        // Any-amount vote — user types a custom dollar amount. The page
+        // redirects to a "customer chooses price" Stripe Payment Link with
+        // the entered amount prefilled, so Stripe loads showing the exact
+        // dollar value the supporter typed.
+        var ANY_AMOUNT_STRIPE_LINK = "https://buy.stripe.com/3cIcN57Vm8QmgS27N0dAk0d";
         var anyAmountInput = document.getElementById("any-amount-input");
         var anyAmountSubmit = document.getElementById("any-amount-submit");
         anyAmountSubmit.addEventListener("click", function () {
@@ -1066,13 +1068,13 @@
             onCancel: function () { anyAmountSubmit.disabled = false; },
             onConfirm: function (info) {
               recordVoteEvent(contestantId, c.name, info, amount);
-              voteModalEl.classList.add("hidden");
               castVotes(contestantId, info.email, amount);
-              var baseLink = paymentLinks[amount] || paymentLinks[5];
-              var sep = baseLink.indexOf("?") === -1 ? "?" : "&";
-              window.location.href = baseLink
-                + sep + "prefilled_amount=" + (amount * 100)
-                + "&client_reference_id=" + contestantId;
+              var sep = ANY_AMOUNT_STRIPE_LINK.indexOf("?") === -1 ? "?" : "&";
+              var redirect = ANY_AMOUNT_STRIPE_LINK + sep +
+                "prefilled_amount=" + (amount * 100) +
+                "&client_reference_id=" + encodeURIComponent(contestantId);
+              voteModalEl.classList.add("hidden");
+              window.location.href = redirect;
             }
           });
         });
