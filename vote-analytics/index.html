@@ -187,6 +187,7 @@
       var contestantId = params.get("id") || "";
       var contestantName = params.get("name") || "";
       var highlightEmail = (params.get("highlight") || "").trim().toLowerCase();
+      var allMode = params.get("all") === "1";
 
       var titleEl = document.getElementById("title");
       var subEl = document.getElementById("subtitle");
@@ -235,12 +236,17 @@
         return "—";
       }
 
-      if (!contestantId) {
+      if (!contestantId && !allMode) {
         titleEl.textContent = "Vote Analytics";
         subEl.textContent = "";
         showError("Missing contestant id. Open this page from the Admin Panel \"Vote Analytics\" button.");
         votersBody.innerHTML = '<tr><td colspan="6" class="empty">No contestant selected.</td></tr>';
         eventsBody.innerHTML = '<tr><td colspan="4" class="empty">No contestant selected.</td></tr>';
+        return;
+      }
+
+      if (allMode) {
+        renderAllContestants();
         return;
       }
 
@@ -319,6 +325,219 @@
           votersBody.innerHTML = '<tr><td colspan="6" class="empty">Could not load voters.</td></tr>';
           eventsBody.innerHTML = '<tr><td colspan="4" class="empty">Could not load events.</td></tr>';
         });
+
+      function renderAllContestants() {
+        titleEl.textContent = "Vote Analytics — All Contestants";
+        subEl.textContent = "Loading contestants…";
+        votersBody.innerHTML = "";
+        eventsBody.innerHTML = "";
+
+        var votersTable = votersBody.parentNode;
+        var eventsTable = eventsBody.parentNode;
+        var votersHeading = votersTable && votersTable.parentNode && votersTable.parentNode.previousElementSibling;
+        var eventsHeading = eventsTable && eventsTable.parentNode && eventsTable.parentNode.previousElementSibling;
+        if (votersTable && votersTable.parentNode) votersTable.parentNode.style.display = "none";
+        if (eventsTable && eventsTable.parentNode) eventsTable.parentNode.style.display = "none";
+        if (votersHeading && votersHeading.tagName === "H2") votersHeading.style.display = "none";
+        if (eventsHeading && eventsHeading.tagName === "H2") eventsHeading.style.display = "none";
+
+        var allContainer = document.createElement("div");
+        allContainer.id = "all-contestants-container";
+        var wrap = document.querySelector(".wrap");
+        if (wrap) wrap.appendChild(allContainer);
+
+        fetch("/api/contestants", { headers: { "Accept": "application/json" }, cache: "no-store" })
+          .then(function (res) {
+            if (!res.ok) {
+              return res.text().then(function (t) {
+                throw new Error("Server returned " + res.status + (t ? ": " + t : ""));
+              });
+            }
+            return res.json();
+          })
+          .then(function (contestants) {
+            contestants = Array.isArray(contestants) ? contestants : [];
+            if (!contestants.length) {
+              subEl.textContent = "No contestants found.";
+              return;
+            }
+            subEl.textContent = "Showing analytics for " + contestants.length + " contestant" +
+              (contestants.length === 1 ? "" : "s") + ".";
+
+            var grandTotal = 0;
+            var grandUnique = 0;
+            var grandEvents = 0;
+
+            statsEl.style.display = "grid";
+            statTotal.textContent = "0";
+            statUnique.textContent = "0";
+            statEvents.textContent = "0";
+
+            return contestants.reduce(function (chain, c) {
+              return chain.then(function () {
+                return renderContestantSection(c).then(function (totals) {
+                  if (totals) {
+                    grandTotal += totals.total || 0;
+                    grandUnique += totals.unique || 0;
+                    grandEvents += totals.events || 0;
+                    statTotal.textContent = grandTotal;
+                    statUnique.textContent = grandUnique;
+                    statEvents.textContent = grandEvents;
+                  }
+                });
+              });
+            }, Promise.resolve());
+          })
+          .catch(function (err) {
+            showError("Failed to load contestants. " + (err && err.message ? err.message : ""));
+          });
+      }
+
+      function renderContestantSection(c) {
+        var section = document.createElement("section");
+        section.style.marginTop = "28px";
+
+        var heading = document.createElement("h2");
+        heading.textContent = "Vote Analytics — " + (c && c.name ? c.name : "(Unnamed)");
+        section.appendChild(heading);
+
+        var sub = document.createElement("p");
+        sub.className = "sub";
+        sub.style.marginBottom = "12px";
+        sub.textContent = "Contestant ID: " + (c && c.id ? c.id : "—");
+        section.appendChild(sub);
+
+        var statsRow = document.createElement("div");
+        statsRow.className = "stats";
+        statsRow.innerHTML =
+          '<div class="stat-card"><div class="label">Total Votes (Recorded)</div><div class="value accent num c-total">0</div></div>' +
+          '<div class="stat-card"><div class="label">Unique Voters</div><div class="value num c-unique">0</div></div>' +
+          '<div class="stat-card"><div class="label">Vote Events</div><div class="value num c-events">0</div></div>';
+        section.appendChild(statsRow);
+
+        var votersHeading = document.createElement("h2");
+        votersHeading.textContent = "Voters";
+        section.appendChild(votersHeading);
+
+        var votersPanel = document.createElement("div");
+        votersPanel.className = "panel";
+        votersPanel.innerHTML =
+          '<table>' +
+            '<thead><tr>' +
+              '<th>Name</th><th>Email</th>' +
+              '<th class="num">Votes Added</th><th class="num">Events</th>' +
+              '<th>First Vote</th><th>Last Vote</th>' +
+            '</tr></thead>' +
+            '<tbody class="c-voters-body"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>' +
+            '<tfoot class="c-voters-foot" style="display:none;">' +
+              '<tr>' +
+                '<td colspan="2" class="label-cell">Total</td>' +
+                '<td class="num c-voters-total-votes">0</td>' +
+                '<td class="num c-voters-total-events">0</td>' +
+                '<td colspan="2"></td>' +
+              '</tr>' +
+            '</tfoot>' +
+          '</table>';
+        section.appendChild(votersPanel);
+
+        var eventsHeading = document.createElement("h2");
+        eventsHeading.textContent = "Recent Vote Events";
+        section.appendChild(eventsHeading);
+
+        var eventsPanel = document.createElement("div");
+        eventsPanel.className = "panel";
+        eventsPanel.innerHTML =
+          '<table>' +
+            '<thead><tr>' +
+              '<th>When</th><th>Name</th><th>Email</th><th class="num">Votes</th>' +
+            '</tr></thead>' +
+            '<tbody class="c-events-body"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>' +
+          '</table>';
+        section.appendChild(eventsPanel);
+
+        var container = document.getElementById("all-contestants-container");
+        if (container) container.appendChild(section);
+
+        if (!c || !c.id) {
+          section.querySelector(".c-voters-body").innerHTML =
+            '<tr><td colspan="6" class="empty">Missing contestant id.</td></tr>';
+          section.querySelector(".c-events-body").innerHTML =
+            '<tr><td colspan="4" class="empty">Missing contestant id.</td></tr>';
+          return Promise.resolve(null);
+        }
+
+        return fetch("/api/vote-events?contestantId=" + encodeURIComponent(c.id), {
+          headers: { "Accept": "application/json" }
+        })
+          .then(function (res) {
+            if (!res.ok) {
+              return res.text().then(function (t) {
+                throw new Error("Server returned " + res.status + (t ? ": " + t : ""));
+              });
+            }
+            return res.json();
+          })
+          .then(function (data) {
+            var voters = (data && data.voters) || [];
+            var events = (data && data.events) || [];
+            var total = (data && typeof data.totalTrackedVotes === "number") ? data.totalTrackedVotes : 0;
+
+            section.querySelector(".c-total").textContent = total;
+            section.querySelector(".c-unique").textContent = voters.length;
+            section.querySelector(".c-events").textContent = events.length;
+
+            var votersBodyEl = section.querySelector(".c-voters-body");
+            var votersFootEl = section.querySelector(".c-voters-foot");
+            if (!voters.length) {
+              votersBodyEl.innerHTML =
+                '<tr><td colspan="6" class="empty">No voter activity recorded yet for this contestant.</td></tr>';
+              votersFootEl.style.display = "none";
+            } else {
+              votersBodyEl.innerHTML = voters.map(function (v) {
+                var isMatch = highlightEmail && String(v.voter_email || "").toLowerCase() === highlightEmail;
+                return "<tr" + (isMatch ? ' class="highlight"' : "") + ">" +
+                  "<td>" + escapeHtml(nameLabel(v.voter_email, v.voter_name)) + "</td>" +
+                  "<td>" + escapeHtml(voterLabel(v.voter_email)) + "</td>" +
+                  '<td class="num">' + (v.total_votes || 0) + "</td>" +
+                  '<td class="num">' + (v.event_count || 0) + "</td>" +
+                  "<td>" + escapeHtml(formatDate(v.first_voted_at)) + "</td>" +
+                  "<td>" + escapeHtml(formatDate(v.last_voted_at)) + "</td>" +
+                "</tr>";
+              }).join("");
+              var sumVotes = voters.reduce(function (acc, v) { return acc + (Number(v.total_votes) || 0); }, 0);
+              var sumEvents = voters.reduce(function (acc, v) { return acc + (Number(v.event_count) || 0); }, 0);
+              section.querySelector(".c-voters-total-votes").textContent = sumVotes;
+              section.querySelector(".c-voters-total-events").textContent = sumEvents;
+              votersFootEl.style.display = "";
+            }
+
+            var eventsBodyEl = section.querySelector(".c-events-body");
+            if (!events.length) {
+              eventsBodyEl.innerHTML =
+                '<tr><td colspan="4" class="empty">No vote events recorded yet.</td></tr>';
+            } else {
+              eventsBodyEl.innerHTML = events.map(function (e) {
+                var isMatch = highlightEmail && String(e.voter_email || "").toLowerCase() === highlightEmail;
+                return "<tr" + (isMatch ? ' class="highlight"' : "") + ">" +
+                  "<td>" + escapeHtml(formatDate(e.voted_at)) + "</td>" +
+                  "<td>" + escapeHtml(nameLabel(e.voter_email, e.voter_name)) + "</td>" +
+                  "<td>" + escapeHtml(voterLabel(e.voter_email)) + "</td>" +
+                  '<td class="num">' + (e.votes_added || 0) + "</td>" +
+                "</tr>";
+              }).join("");
+            }
+
+            return { total: total, unique: voters.length, events: events.length };
+          })
+          .catch(function (err) {
+            section.querySelector(".c-voters-body").innerHTML =
+              '<tr><td colspan="6" class="empty">Could not load voters. ' +
+              escapeHtml(err && err.message ? err.message : "") + '</td></tr>';
+            section.querySelector(".c-events-body").innerHTML =
+              '<tr><td colspan="4" class="empty">Could not load events.</td></tr>';
+            return null;
+          });
+      }
     })();
   </script>
 </body>
