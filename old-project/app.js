@@ -377,6 +377,7 @@
       adminPanel.classList.toggle("hidden", currentView !== "admin");
       adminToggle.textContent = "Admin";
       ensureParticipantSearchUI();
+      ensureVoterEmailSearchUI();
       ensureContestantEmailField();
       ensureContestantPasswordField();
       renderAdminList();
@@ -387,6 +388,121 @@
       adminPanel.classList.add("hidden");
       adminToggle.textContent = "Admin";
     }
+  }
+
+  // --- Admin: Search Contestant by Voter Email (Vote Analytics lookup) ---
+  // Adds a search bar at the very top of the Admin Panel. Given a voter's
+  // email, queries /api/vote-events?voterEmail=... to find which contestant(s)
+  // that email has voted for, then opens the Vote Analytics page for the match.
+  function ensureVoterEmailSearchUI() {
+    if (!adminPanel || document.getElementById("voter-email-search-box")) return;
+    var wrap = document.createElement("div");
+    wrap.id = "voter-email-search-box";
+    wrap.style.cssText = "display:flex;gap:8px;align-items:center;margin:0 0 12px 0;padding:12px;background:#f0f7ff;border:1px solid #cfe1ff;border-radius:8px;flex-wrap:wrap;";
+    wrap.innerHTML =
+      '<label for="voter-email-search-input" style="font-weight:600;color:#1a3a6b;font-size:14px;">Find contestant by voter email:</label>' +
+      '<input id="voter-email-search-input" type="email" placeholder="voter@example.com" autocomplete="off" ' +
+      'style="flex:1;min-width:200px;padding:8px 12px;border:1px solid #b8cce6;border-radius:6px;font-size:14px;" />' +
+      '<button id="voter-email-search-btn" type="button" class="btn btn-primary" style="white-space:nowrap;">Open Vote Analytics</button>' +
+      '<button id="voter-email-search-clear-btn" type="button" class="btn btn-secondary" style="white-space:nowrap;">Clear</button>' +
+      '<div id="voter-email-search-status" style="flex-basis:100%;color:#1a3a6b;font-size:13px;min-height:0;"></div>' +
+      '<div id="voter-email-search-result" style="flex-basis:100%;"></div>';
+    adminPanel.insertBefore(wrap, adminPanel.firstChild);
+
+    var input = wrap.querySelector("#voter-email-search-input");
+    var btn = wrap.querySelector("#voter-email-search-btn");
+    var clearBtn = wrap.querySelector("#voter-email-search-clear-btn");
+    var status = wrap.querySelector("#voter-email-search-status");
+    var result = wrap.querySelector("#voter-email-search-result");
+
+    function escapeHtmlLocal(value) {
+      return String(value == null ? "" : value).replace(/[&<>"']/g, function (ch) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
+      });
+    }
+
+    function openAnalytics(contestantId, contestantName, highlightEmail) {
+      var qs = "?id=" + encodeURIComponent(contestantId) +
+               "&name=" + encodeURIComponent(contestantName || "") +
+               "&highlight=" + encodeURIComponent(highlightEmail || "");
+      window.location.href = "/vote-analytics/" + qs;
+    }
+
+    function runSearch() {
+      result.innerHTML = "";
+      status.textContent = "";
+      status.style.color = "#1a3a6b";
+
+      var raw = (input.value || "").trim();
+      if (!raw) {
+        status.style.color = "#b00020";
+        status.textContent = "Please enter an email to search.";
+        return;
+      }
+      var target = raw.toLowerCase();
+
+      status.textContent = "Searching vote analytics…";
+      btn.disabled = true;
+
+      fetch("/api/vote-events?voterEmail=" + encodeURIComponent(target), {
+        headers: { "Accept": "application/json" }
+      })
+        .then(function (res) {
+          if (!res.ok) {
+            return res.text().then(function (t) {
+              throw new Error("Server returned " + res.status + (t ? ": " + t : ""));
+            });
+          }
+          return res.json();
+        })
+        .then(function (data) {
+          var matches = (data && data.matches) || [];
+          if (matches.length === 0) {
+            status.style.color = "#b00020";
+            status.textContent = 'No contestant found for "' + raw + '".';
+            return;
+          }
+          if (matches.length === 1) {
+            var only = matches[0];
+            status.textContent = "Opening Vote Analytics for " + (only.contestant_name || only.contestant_id) + "…";
+            openAnalytics(only.contestant_id, only.contestant_name || "", target);
+            return;
+          }
+          status.textContent = "Found in " + matches.length + " contestants' vote analytics. Pick one:";
+          var items = matches.map(function (m) {
+            var label = (m.contestant_name || m.contestant_id) +
+              " — " + (m.total_votes || 0) + " votes (" + (m.event_count || 0) + " events)";
+            return '<button type="button" class="voter-email-search-match" data-id="' +
+              escapeHtmlLocal(m.contestant_id) + '" data-name="' + escapeHtmlLocal(m.contestant_name || "") +
+              '" style="display:block;width:100%;text-align:left;background:#fff;border:1px solid #b8cce6;border-radius:6px;padding:10px 12px;margin:6px 0;color:#1a3a6b;cursor:pointer;font:inherit;">' +
+              escapeHtmlLocal(label) + '</button>';
+          }).join("");
+          result.innerHTML = items;
+          var buttons = result.querySelectorAll(".voter-email-search-match");
+          for (var i = 0; i < buttons.length; i++) {
+            buttons[i].addEventListener("click", function () {
+              openAnalytics(this.getAttribute("data-id"), this.getAttribute("data-name"), target);
+            });
+          }
+        })
+        .catch(function (err) {
+          status.style.color = "#b00020";
+          status.textContent = "Search failed. " + (err && err.message ? err.message : "");
+        })
+        .then(function () {
+          btn.disabled = false;
+        });
+    }
+
+    btn.addEventListener("click", runSearch);
+    clearBtn.addEventListener("click", function () {
+      input.value = "";
+      result.innerHTML = "";
+      status.textContent = "";
+    });
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); runSearch(); }
+    });
   }
 
   // --- Admin: Search Contestant by Name ---
