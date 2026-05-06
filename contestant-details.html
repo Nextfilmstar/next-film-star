@@ -731,6 +731,25 @@
           250: "https://buy.stripe.com/4gMcN52B27MiatE9V8dAk0c"
         };
 
+        // Stripe payment links used when the "2x Votes" admin toggle is on.
+        // Each link points to a product priced the same dollar amount but
+        // credits double the votes via its Stripe webhook.
+        var doubleVotesPaymentLinks = {
+          5: "https://buy.stripe.com/7sYaEX8ZqfeK0T4aZcdAk0f",
+          10: "https://buy.stripe.com/7sYaEXejK8QmdFQffsdAk0g",
+          25: "https://buy.stripe.com/aFa6oHa3u2rYbxId7kdAk0h",
+          50: "https://buy.stripe.com/6oU3cvcbC0jQbxId7kdAk0i",
+          100: "https://buy.stripe.com/5kQ5kD2B25EadFQ1oCdAk0j",
+          250: "https://buy.stripe.com/9B68wPdfG1nU8lw8R4dAk0k"
+        };
+
+        var doubleVotesEnabled = false;
+        fetch("/api/double-votes").then(function (res) {
+          return res.ok ? res.json() : null;
+        }).then(function (data) {
+          doubleVotesEnabled = !!(data && data.enabled);
+        }).catch(function () {});
+
         var selectedContestantId = null;
         var voteModalEl = document.getElementById("vote-modal");
         var voteModalNameEl = document.getElementById("vote-modal-name");
@@ -753,7 +772,29 @@
           if (anyAmt) anyAmt.value = "";
           var anyBtn = document.getElementById("any-amount-submit");
           if (anyBtn) anyBtn.disabled = false;
+
+          // Refresh the toggle state so opening the modal always shows the
+          // current label (e.g. admin flips it while a card is open).
+          fetch("/api/double-votes").then(function (res) {
+            return res.ok ? res.json() : null;
+          }).then(function (data) {
+            doubleVotesEnabled = !!(data && data.enabled);
+            applyVoteCountLabels();
+          }).catch(function () {
+            applyVoteCountLabels();
+          });
+
           voteModalEl.classList.remove("hidden");
+        }
+
+        function applyVoteCountLabels() {
+          document.querySelectorAll("#vote-modal .vote-option.paid-vote").forEach(function (btn) {
+            var amount = parseInt(btn.getAttribute("data-amount"), 10);
+            if (!amount) return;
+            var displayed = doubleVotesEnabled ? amount * 2 : amount;
+            var span = btn.querySelector(".vote-count");
+            if (span) span.textContent = displayed + " Votes";
+          });
         }
 
         document.getElementById("profile-vote-btn").addEventListener("click", function () {
@@ -1018,9 +1059,12 @@
           });
         });
 
-        // Paid votes — show verification modal, then immediately credit the
-        // contestant with the matching number of votes (5/10/25/...). No
-        // confirmation message is shown.
+        // Paid votes — show verification modal, credit the contestant via the
+        // background cast-votes function, then redirect to Stripe. The base
+        // button amount (5/10/25/...) is passed to castVotes because the
+        // upstream /api/vote endpoint applies the "2x Votes" toggle itself per
+        // call, so passing the base count yields the correct doubled total
+        // when the toggle is on.
         document.querySelectorAll(".paid-vote").forEach(function (btn) {
           btn.addEventListener("click", function () {
             if (!selectedContestantId) return;
@@ -1028,14 +1072,16 @@
             if (!amount || amount <= 0) return;
             var contestantId = selectedContestantId;
             btn.disabled = true;
+            var votesAwarded = doubleVotesEnabled ? amount * 2 : amount;
+            var linkMap = doubleVotesEnabled ? doubleVotesPaymentLinks : paymentLinks;
             openVerifyModal({
-              summary: amount + " votes for " + (c.name || "this contestant"),
+              summary: votesAwarded + " votes for " + (c.name || "this contestant"),
               onCancel: function () { btn.disabled = false; },
               onConfirm: function (info) {
-                recordVoteEvent(contestantId, c.name, info, amount);
+                recordVoteEvent(contestantId, c.name, info, votesAwarded);
                 voteModalEl.classList.add("hidden");
                 castVotes(contestantId, info.email, amount);
-                var link = paymentLinks[amount];
+                var link = linkMap[amount];
                 if (link) {
                   window.location.href = link + "?client_reference_id=" + contestantId;
                 } else {
@@ -1159,7 +1205,8 @@
         // upstream /api/vote endpoint is hit `count` times sequentially
         // server-side. The browser navigates to Stripe immediately after the
         // 202 returns; the background job continues running until every vote
-        // is credited even though this page is gone.
+        // is credited even though this page is gone. Pass the BASE button
+        // amount; the upstream endpoint applies the "2x Votes" toggle itself.
         function castVotes(votedId, voterEmail, count) {
           var n = parseInt(count) || 0;
           if (!votedId || n <= 0) return;
