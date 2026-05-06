@@ -127,6 +127,10 @@
         <div class="value accent num" id="stat-total">0</div>
       </div>
       <div class="stat-card">
+        <div class="label">Total Amount (USD)</div>
+        <div class="value num" id="stat-amount">$0.00</div>
+      </div>
+      <div class="stat-card">
         <div class="label">Unique Voters</div>
         <div class="value num" id="stat-unique">0</div>
       </div>
@@ -144,18 +148,20 @@
             <th>Name</th>
             <th>Email</th>
             <th class="num">Votes Added</th>
+            <th class="num">Amount (USD)</th>
             <th class="num">Events</th>
             <th>First Vote</th>
             <th>Last Vote</th>
           </tr>
         </thead>
         <tbody id="voters-body">
-          <tr><td colspan="6" class="empty">Loading…</td></tr>
+          <tr><td colspan="7" class="empty">Loading…</td></tr>
         </tbody>
         <tfoot id="voters-foot" style="display:none;">
           <tr>
             <td colspan="2" class="label-cell">Total</td>
             <td class="num" id="voters-total-votes">0</td>
+            <td class="num" id="voters-total-amount">$0.00</td>
             <td class="num" id="voters-total-events">0</td>
             <td colspan="2"></td>
           </tr>
@@ -172,10 +178,29 @@
             <th>Name</th>
             <th>Email</th>
             <th class="num">Votes</th>
+            <th class="num">Amount (USD)</th>
           </tr>
         </thead>
         <tbody id="events-body">
-          <tr><td colspan="4" class="empty">Loading…</td></tr>
+          <tr><td colspan="5" class="empty">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Votes</h2>
+    <div class="panel">
+      <table>
+        <thead>
+          <tr>
+            <th>When</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th class="num">Votes</th>
+            <th class="num">Amount (USD)</th>
+          </tr>
+        </thead>
+        <tbody id="votes-body">
+          <tr><td colspan="5" class="empty">Loading…</td></tr>
         </tbody>
       </table>
     </div>
@@ -194,13 +219,16 @@
       var errEl = document.getElementById("error");
       var statsEl = document.getElementById("stats");
       var statTotal = document.getElementById("stat-total");
+      var statAmount = document.getElementById("stat-amount");
       var statUnique = document.getElementById("stat-unique");
       var statEvents = document.getElementById("stat-events");
       var votersBody = document.getElementById("voters-body");
       var votersFoot = document.getElementById("voters-foot");
       var votersTotalVotes = document.getElementById("voters-total-votes");
+      var votersTotalAmount = document.getElementById("voters-total-amount");
       var votersTotalEvents = document.getElementById("voters-total-events");
       var eventsBody = document.getElementById("events-body");
+      var votesBody = document.getElementById("votes-body");
 
       function showError(msg) {
         errEl.textContent = msg;
@@ -222,6 +250,12 @@
         } catch (e) { return "—"; }
       }
 
+      function formatAmount(value) {
+        var n = Number(value);
+        if (!Number.isFinite(n) || n <= 0) return "—";
+        return "$" + n.toFixed(2);
+      }
+
       function voterLabel(email) {
         if (!email) return "(unknown)";
         if (email === "admin@nextfilmlead") return "Admin (manual adjustment)";
@@ -240,8 +274,9 @@
         titleEl.textContent = "Vote Analytics";
         subEl.textContent = "";
         showError("Missing contestant id. Open this page from the Admin Panel \"Vote Analytics\" button.");
-        votersBody.innerHTML = '<tr><td colspan="6" class="empty">No contestant selected.</td></tr>';
-        eventsBody.innerHTML = '<tr><td colspan="4" class="empty">No contestant selected.</td></tr>';
+        votersBody.innerHTML = '<tr><td colspan="7" class="empty">No contestant selected.</td></tr>';
+        eventsBody.innerHTML = '<tr><td colspan="5" class="empty">No contestant selected.</td></tr>';
+        votesBody.innerHTML = '<tr><td colspan="5" class="empty">No contestant selected.</td></tr>';
         return;
       }
 
@@ -270,14 +305,16 @@
           var voters = (data && data.voters) || [];
           var events = (data && data.events) || [];
           var total = (data && typeof data.totalTrackedVotes === "number") ? data.totalTrackedVotes : 0;
+          var totalAmount = (data && typeof data.totalAmountUsd === "number") ? data.totalAmountUsd : 0;
 
           statsEl.style.display = "grid";
           statTotal.textContent = total;
+          statAmount.textContent = "$" + Number(totalAmount).toFixed(2);
           statUnique.textContent = voters.length;
           statEvents.textContent = events.length;
 
           if (!voters.length) {
-            votersBody.innerHTML = '<tr><td colspan="6" class="empty">No voter activity recorded yet for this contestant.</td></tr>';
+            votersBody.innerHTML = '<tr><td colspan="7" class="empty">No voter activity recorded yet for this contestant.</td></tr>';
             votersFoot.style.display = "none";
           } else {
             votersBody.innerHTML = voters.map(function (v) {
@@ -286,6 +323,7 @@
                 "<td>" + escapeHtml(nameLabel(v.voter_email, v.voter_name)) + "</td>" +
                 "<td>" + escapeHtml(voterLabel(v.voter_email)) + "</td>" +
                 '<td class="num">' + (v.total_votes || 0) + "</td>" +
+                '<td class="num">' + escapeHtml(formatAmount(v.total_amount_usd)) + "</td>" +
                 '<td class="num">' + (v.event_count || 0) + "</td>" +
                 "<td>" + escapeHtml(formatDate(v.first_voted_at)) + "</td>" +
                 "<td>" + escapeHtml(formatDate(v.last_voted_at)) + "</td>" +
@@ -293,24 +331,30 @@
             }).join("");
 
             var sumVotes = voters.reduce(function (acc, v) { return acc + (Number(v.total_votes) || 0); }, 0);
+            var sumAmount = voters.reduce(function (acc, v) { return acc + (Number(v.total_amount_usd) || 0); }, 0);
             var sumEvents = voters.reduce(function (acc, v) { return acc + (Number(v.event_count) || 0); }, 0);
             votersTotalVotes.textContent = sumVotes;
+            votersTotalAmount.textContent = "$" + sumAmount.toFixed(2);
             votersTotalEvents.textContent = sumEvents;
             votersFoot.style.display = "";
           }
 
           if (!events.length) {
-            eventsBody.innerHTML = '<tr><td colspan="4" class="empty">No vote events recorded yet.</td></tr>';
+            eventsBody.innerHTML = '<tr><td colspan="5" class="empty">No vote events recorded yet.</td></tr>';
+            votesBody.innerHTML = '<tr><td colspan="5" class="empty">No vote events recorded yet.</td></tr>';
           } else {
-            eventsBody.innerHTML = events.map(function (e) {
+            var eventsHtml = events.map(function (e) {
               var isMatch = highlightEmail && String(e.voter_email || "").toLowerCase() === highlightEmail;
               return "<tr" + (isMatch ? ' class="highlight"' : "") + ">" +
                 "<td>" + escapeHtml(formatDate(e.voted_at)) + "</td>" +
                 "<td>" + escapeHtml(nameLabel(e.voter_email, e.voter_name)) + "</td>" +
                 "<td>" + escapeHtml(voterLabel(e.voter_email)) + "</td>" +
                 '<td class="num">' + (e.votes_added || 0) + "</td>" +
+                '<td class="num">' + escapeHtml(formatAmount(e.amount_usd)) + "</td>" +
               "</tr>";
             }).join("");
+            eventsBody.innerHTML = eventsHtml;
+            votesBody.innerHTML = eventsHtml;
           }
 
           if (highlightEmail) {
@@ -322,8 +366,9 @@
         })
         .catch(function (err) {
           showError("Failed to load vote analytics. " + (err && err.message ? err.message : ""));
-          votersBody.innerHTML = '<tr><td colspan="6" class="empty">Could not load voters.</td></tr>';
-          eventsBody.innerHTML = '<tr><td colspan="4" class="empty">Could not load events.</td></tr>';
+          votersBody.innerHTML = '<tr><td colspan="7" class="empty">Could not load voters.</td></tr>';
+          eventsBody.innerHTML = '<tr><td colspan="5" class="empty">Could not load events.</td></tr>';
+          votesBody.innerHTML = '<tr><td colspan="5" class="empty">Could not load votes.</td></tr>';
         });
 
       function renderAllContestants() {
@@ -331,15 +376,20 @@
         subEl.textContent = "Loading contestants…";
         votersBody.innerHTML = "";
         eventsBody.innerHTML = "";
+        votesBody.innerHTML = "";
 
         var votersTable = votersBody.parentNode;
         var eventsTable = eventsBody.parentNode;
+        var votesTable = votesBody.parentNode;
         var votersHeading = votersTable && votersTable.parentNode && votersTable.parentNode.previousElementSibling;
         var eventsHeading = eventsTable && eventsTable.parentNode && eventsTable.parentNode.previousElementSibling;
+        var votesHeading = votesTable && votesTable.parentNode && votesTable.parentNode.previousElementSibling;
         if (votersTable && votersTable.parentNode) votersTable.parentNode.style.display = "none";
         if (eventsTable && eventsTable.parentNode) eventsTable.parentNode.style.display = "none";
+        if (votesTable && votesTable.parentNode) votesTable.parentNode.style.display = "none";
         if (votersHeading && votersHeading.tagName === "H2") votersHeading.style.display = "none";
         if (eventsHeading && eventsHeading.tagName === "H2") eventsHeading.style.display = "none";
+        if (votesHeading && votesHeading.tagName === "H2") votesHeading.style.display = "none";
 
         var allContainer = document.createElement("div");
         allContainer.id = "all-contestants-container";
@@ -365,11 +415,13 @@
               (contestants.length === 1 ? "" : "s") + ".";
 
             var grandTotal = 0;
+            var grandAmount = 0;
             var grandUnique = 0;
             var grandEvents = 0;
 
             statsEl.style.display = "grid";
             statTotal.textContent = "0";
+            statAmount.textContent = "$0.00";
             statUnique.textContent = "0";
             statEvents.textContent = "0";
 
@@ -378,9 +430,11 @@
                 return renderContestantSection(c).then(function (totals) {
                   if (totals) {
                     grandTotal += totals.total || 0;
+                    grandAmount += totals.amount || 0;
                     grandUnique += totals.unique || 0;
                     grandEvents += totals.events || 0;
                     statTotal.textContent = grandTotal;
+                    statAmount.textContent = "$" + grandAmount.toFixed(2);
                     statUnique.textContent = grandUnique;
                     statEvents.textContent = grandEvents;
                   }
@@ -411,6 +465,7 @@
         statsRow.className = "stats";
         statsRow.innerHTML =
           '<div class="stat-card"><div class="label">Total Votes (Recorded)</div><div class="value accent num c-total">0</div></div>' +
+          '<div class="stat-card"><div class="label">Total Amount (USD)</div><div class="value num c-amount">$0.00</div></div>' +
           '<div class="stat-card"><div class="label">Unique Voters</div><div class="value num c-unique">0</div></div>' +
           '<div class="stat-card"><div class="label">Vote Events</div><div class="value num c-events">0</div></div>';
         section.appendChild(statsRow);
@@ -425,14 +480,17 @@
           '<table>' +
             '<thead><tr>' +
               '<th>Name</th><th>Email</th>' +
-              '<th class="num">Votes Added</th><th class="num">Events</th>' +
+              '<th class="num">Votes Added</th>' +
+              '<th class="num">Amount (USD)</th>' +
+              '<th class="num">Events</th>' +
               '<th>First Vote</th><th>Last Vote</th>' +
             '</tr></thead>' +
-            '<tbody class="c-voters-body"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>' +
+            '<tbody class="c-voters-body"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>' +
             '<tfoot class="c-voters-foot" style="display:none;">' +
               '<tr>' +
                 '<td colspan="2" class="label-cell">Total</td>' +
                 '<td class="num c-voters-total-votes">0</td>' +
+                '<td class="num c-voters-total-amount">$0.00</td>' +
                 '<td class="num c-voters-total-events">0</td>' +
                 '<td colspan="2"></td>' +
               '</tr>' +
@@ -449,20 +507,41 @@
         eventsPanel.innerHTML =
           '<table>' +
             '<thead><tr>' +
-              '<th>When</th><th>Name</th><th>Email</th><th class="num">Votes</th>' +
+              '<th>When</th><th>Name</th><th>Email</th>' +
+              '<th class="num">Votes</th>' +
+              '<th class="num">Amount (USD)</th>' +
             '</tr></thead>' +
-            '<tbody class="c-events-body"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>' +
+            '<tbody class="c-events-body"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>' +
           '</table>';
         section.appendChild(eventsPanel);
+
+        var votesHeading = document.createElement("h2");
+        votesHeading.textContent = "Votes";
+        section.appendChild(votesHeading);
+
+        var votesPanel = document.createElement("div");
+        votesPanel.className = "panel";
+        votesPanel.innerHTML =
+          '<table>' +
+            '<thead><tr>' +
+              '<th>When</th><th>Name</th><th>Email</th>' +
+              '<th class="num">Votes</th>' +
+              '<th class="num">Amount (USD)</th>' +
+            '</tr></thead>' +
+            '<tbody class="c-votes-body"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>' +
+          '</table>';
+        section.appendChild(votesPanel);
 
         var container = document.getElementById("all-contestants-container");
         if (container) container.appendChild(section);
 
         if (!c || !c.id) {
           section.querySelector(".c-voters-body").innerHTML =
-            '<tr><td colspan="6" class="empty">Missing contestant id.</td></tr>';
+            '<tr><td colspan="7" class="empty">Missing contestant id.</td></tr>';
           section.querySelector(".c-events-body").innerHTML =
-            '<tr><td colspan="4" class="empty">Missing contestant id.</td></tr>';
+            '<tr><td colspan="5" class="empty">Missing contestant id.</td></tr>';
+          section.querySelector(".c-votes-body").innerHTML =
+            '<tr><td colspan="5" class="empty">Missing contestant id.</td></tr>';
           return Promise.resolve(null);
         }
 
@@ -481,8 +560,10 @@
             var voters = (data && data.voters) || [];
             var events = (data && data.events) || [];
             var total = (data && typeof data.totalTrackedVotes === "number") ? data.totalTrackedVotes : 0;
+            var totalAmount = (data && typeof data.totalAmountUsd === "number") ? data.totalAmountUsd : 0;
 
             section.querySelector(".c-total").textContent = total;
+            section.querySelector(".c-amount").textContent = "$" + Number(totalAmount).toFixed(2);
             section.querySelector(".c-unique").textContent = voters.length;
             section.querySelector(".c-events").textContent = events.length;
 
@@ -490,7 +571,7 @@
             var votersFootEl = section.querySelector(".c-voters-foot");
             if (!voters.length) {
               votersBodyEl.innerHTML =
-                '<tr><td colspan="6" class="empty">No voter activity recorded yet for this contestant.</td></tr>';
+                '<tr><td colspan="7" class="empty">No voter activity recorded yet for this contestant.</td></tr>';
               votersFootEl.style.display = "none";
             } else {
               votersBodyEl.innerHTML = voters.map(function (v) {
@@ -499,42 +580,53 @@
                   "<td>" + escapeHtml(nameLabel(v.voter_email, v.voter_name)) + "</td>" +
                   "<td>" + escapeHtml(voterLabel(v.voter_email)) + "</td>" +
                   '<td class="num">' + (v.total_votes || 0) + "</td>" +
+                  '<td class="num">' + escapeHtml(formatAmount(v.total_amount_usd)) + "</td>" +
                   '<td class="num">' + (v.event_count || 0) + "</td>" +
                   "<td>" + escapeHtml(formatDate(v.first_voted_at)) + "</td>" +
                   "<td>" + escapeHtml(formatDate(v.last_voted_at)) + "</td>" +
                 "</tr>";
               }).join("");
               var sumVotes = voters.reduce(function (acc, v) { return acc + (Number(v.total_votes) || 0); }, 0);
+              var sumAmount = voters.reduce(function (acc, v) { return acc + (Number(v.total_amount_usd) || 0); }, 0);
               var sumEvents = voters.reduce(function (acc, v) { return acc + (Number(v.event_count) || 0); }, 0);
               section.querySelector(".c-voters-total-votes").textContent = sumVotes;
+              section.querySelector(".c-voters-total-amount").textContent = "$" + sumAmount.toFixed(2);
               section.querySelector(".c-voters-total-events").textContent = sumEvents;
               votersFootEl.style.display = "";
             }
 
             var eventsBodyEl = section.querySelector(".c-events-body");
+            var votesBodyEl = section.querySelector(".c-votes-body");
             if (!events.length) {
               eventsBodyEl.innerHTML =
-                '<tr><td colspan="4" class="empty">No vote events recorded yet.</td></tr>';
+                '<tr><td colspan="5" class="empty">No vote events recorded yet.</td></tr>';
+              votesBodyEl.innerHTML =
+                '<tr><td colspan="5" class="empty">No vote events recorded yet.</td></tr>';
             } else {
-              eventsBodyEl.innerHTML = events.map(function (e) {
+              var eventsHtml = events.map(function (e) {
                 var isMatch = highlightEmail && String(e.voter_email || "").toLowerCase() === highlightEmail;
                 return "<tr" + (isMatch ? ' class="highlight"' : "") + ">" +
                   "<td>" + escapeHtml(formatDate(e.voted_at)) + "</td>" +
                   "<td>" + escapeHtml(nameLabel(e.voter_email, e.voter_name)) + "</td>" +
                   "<td>" + escapeHtml(voterLabel(e.voter_email)) + "</td>" +
                   '<td class="num">' + (e.votes_added || 0) + "</td>" +
+                  '<td class="num">' + escapeHtml(formatAmount(e.amount_usd)) + "</td>" +
                 "</tr>";
               }).join("");
+              eventsBodyEl.innerHTML = eventsHtml;
+              votesBodyEl.innerHTML = eventsHtml;
             }
 
-            return { total: total, unique: voters.length, events: events.length };
+            return { total: total, amount: totalAmount, unique: voters.length, events: events.length };
           })
           .catch(function (err) {
             section.querySelector(".c-voters-body").innerHTML =
-              '<tr><td colspan="6" class="empty">Could not load voters. ' +
+              '<tr><td colspan="7" class="empty">Could not load voters. ' +
               escapeHtml(err && err.message ? err.message : "") + '</td></tr>';
             section.querySelector(".c-events-body").innerHTML =
-              '<tr><td colspan="4" class="empty">Could not load events.</td></tr>';
+              '<tr><td colspan="5" class="empty">Could not load events.</td></tr>';
+            section.querySelector(".c-votes-body").innerHTML =
+              '<tr><td colspan="5" class="empty">Could not load votes.</td></tr>';
             return null;
           });
       }
