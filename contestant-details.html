@@ -1078,7 +1078,7 @@
               summary: votesAwarded + " votes for " + (c.name || "this contestant"),
               onCancel: function () { btn.disabled = false; },
               onConfirm: function (info) {
-                recordVoteEvent(contestantId, c.name, info, votesAwarded);
+                recordVoteEvent(contestantId, c.name, info, votesAwarded, amount);
                 voteModalEl.classList.add("hidden");
                 castVotes(contestantId, info.email, amount);
                 var link = linkMap[amount];
@@ -1109,11 +1109,12 @@
           }
           var contestantId = selectedContestantId;
           anyAmountSubmit.disabled = true;
+          var votesAwarded = doubleVotesEnabled ? amount * 2 : amount;
           openVerifyModal({
-            summary: amount + " votes for " + (c.name || "this contestant"),
+            summary: votesAwarded + " votes for " + (c.name || "this contestant"),
             onCancel: function () { anyAmountSubmit.disabled = false; },
             onConfirm: function (info) {
-              recordVoteEvent(contestantId, c.name, info, amount);
+              recordVoteEvent(contestantId, c.name, info, votesAwarded, amount);
               castVotes(contestantId, info.email, amount);
               var sep = ANY_AMOUNT_STRIPE_LINK.indexOf("?") === -1 ? "?" : "&";
               var redirect = ANY_AMOUNT_STRIPE_LINK + sep +
@@ -1183,7 +1184,7 @@
         verifyName.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); verifyEmail.focus(); } });
         verifyEmail.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); submitVerify(); } });
 
-        function recordVoteEvent(contestantId, contestantName, info, votesAdded) {
+        function recordVoteEvent(contestantId, contestantName, info, votesAdded, amountUsd) {
           if (!contestantId) return;
           try {
             fetch("/api/vote-events", {
@@ -1194,7 +1195,8 @@
                 contestantName: contestantName || null,
                 voterEmail: info.email,
                 voterName: info.name,
-                votesAdded: votesAdded || 1
+                votesAdded: votesAdded || 1,
+                amountUsd: (typeof amountUsd === "number" && amountUsd > 0) ? amountUsd : null
               }),
               keepalive: true
             }).catch(function () {});

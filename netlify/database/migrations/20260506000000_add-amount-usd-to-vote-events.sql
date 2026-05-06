@@ -1,0 +1,2 @@
+ALTER TABLE vote_events
+  ADD COLUMN IF NOT EXISTS amount_usd NUMERIC(10, 2);
