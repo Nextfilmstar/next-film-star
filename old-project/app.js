@@ -2227,14 +2227,49 @@
   function getMassEmailRecipients() {
     var seen = Object.create(null);
     var recipients = [];
-    (currentApplications || []).forEach(function (app) {
-      var email = (app && app.email ? String(app.email) : "").trim();
+
+    function addEmail(raw) {
+      var email = (raw == null ? "" : String(raw)).trim();
       if (!email) return;
       var key = email.toLowerCase();
       if (seen[key]) return;
       seen[key] = true;
       recipients.push(email);
-    });
+    }
+
+    // Scrape the rendered "Email" section of every participant card so the
+    // recipient list reflects exactly what the admin sees on screen. This
+    // avoids missing addresses when the in-memory list and the rendered DOM
+    // disagree (e.g. lazy renders, filtered views, or stale state).
+    if (participantsList) {
+      var fields = participantsList.querySelectorAll(".participant-field");
+      for (var i = 0; i < fields.length; i++) {
+        var field = fields[i];
+        var label = field.querySelector("strong");
+        if (!label || !/^\s*Email\s*:?\s*$/i.test(label.textContent || "")) continue;
+        var links = field.querySelectorAll('a[href^="mailto:"]');
+        if (links.length) {
+          for (var j = 0; j < links.length; j++) {
+            var href = links[j].getAttribute("href") || "";
+            var fromHref = href.replace(/^mailto:/i, "").split("?")[0];
+            try { fromHref = decodeURIComponent(fromHref); } catch (e) {}
+            addEmail(fromHref || links[j].textContent);
+          }
+        } else {
+          var text = (field.textContent || "").replace(/^[\s\S]*?Email\s*:?\s*/i, "");
+          addEmail(text);
+        }
+      }
+    }
+
+    // Fall back to the loaded applications data when the DOM hasn't been
+    // rendered yet, so the button still works on a fresh admin panel load.
+    if (recipients.length === 0) {
+      (currentApplications || []).forEach(function (app) {
+        addEmail(app && app.email);
+      });
+    }
+
     return recipients;
   }
 
@@ -2988,6 +3023,11 @@
         '<input type="text" id="edit-c-name" value="' + attr(c.name) + '" />' +
         '<label>Email</label>' +
         '<input type="email" id="edit-c-email" value="' + attr(c.email) + '" placeholder="contestant@example.com" />' +
+        '<label>Login Password <span style="font-weight:normal;color:#888;font-size:0.85rem;">(leave blank to keep unchanged)</span></label>' +
+        '<div style="position:relative;">' +
+          '<input type="password" id="edit-c-password" value="" placeholder="Enter new password" autocomplete="new-password" style="padding-right:60px;" />' +
+          '<button type="button" id="edit-c-toggle-pw" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#e94560;cursor:pointer;font-size:0.8rem;padding:2px 6px;">Show</button>' +
+        '</div>' +
         '<label>Blurb (short tagline)</label>' +
         '<textarea id="edit-c-blurb" rows="2" placeholder="One-line tagline shown above the bio">' + text(c.blurb) + '</textarea>' +
         '<label>Bio</label>' +
@@ -3032,6 +3072,14 @@
       var file = this.files[0];
       var label = document.getElementById("edit-c-resume-name");
       label.textContent = file ? "Selected: " + file.name : "";
+    });
+
+    // Password show/hide toggle
+    document.getElementById("edit-c-toggle-pw").addEventListener("click", function () {
+      var pwInput = document.getElementById("edit-c-password");
+      var isHidden = pwInput.type === "password";
+      pwInput.type = isHidden ? "text" : "password";
+      this.textContent = isHidden ? "Hide" : "Show";
     });
 
     // Cancel
@@ -3137,6 +3185,24 @@
           try { errData = await res.json(); } catch (e) {}
           throw new Error((errData && errData.error) || "Failed");
         }
+
+        var passwordVal = document.getElementById("edit-c-password").value;
+        if (passwordVal) {
+          var credEmail = emailVal || c.email;
+          try {
+            var credRes = await fetch("/api/user-credentials?action=store", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: credEmail, password: passwordVal })
+            });
+            if (!credRes.ok) {
+              showToast("Contestant saved but password update failed", true);
+            }
+          } catch (credErr) {
+            showToast("Contestant saved but password update failed", true);
+          }
+        }
+
         overlay.remove();
         showToast(patchBody.name + " updated!");
         loadContestants();
