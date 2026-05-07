@@ -18,16 +18,6 @@ async function blobsVerify(
   try {
     const store = credStore();
 
-    for (const cred of KNOWN_CREDENTIALS) {
-      const key = `cred:${cred.email.toLowerCase()}`;
-      try {
-        await store.setJSON(key, {
-          email: cred.email.toLowerCase(),
-          password: cred.password,
-        });
-      } catch {}
-    }
-
     const key = `cred:${email}`;
     const record = (await store.get(key, { type: "json" })) as {
       email: string;
