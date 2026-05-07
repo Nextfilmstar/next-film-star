@@ -109,7 +109,6 @@
   var timerInterval = null;
   var loggedInUser = null;
   var loggedInContestant = null;
-  var isContestantByIp = false;
   var loggedInUserGroups = [];
   var allGroups = [];
   var contestantSearchCache = {};
@@ -1061,17 +1060,6 @@
   function openVoteModal(id) {
     var c = currentContestants.find(function (x) { return x.id === id; });
     if (!c) return;
-    // Prevent contestants from voting for themselves (skip in admin mode)
-    if (!isAdmin()) {
-      if (loggedInContestant && idsEqual(loggedInContestant.id, id)) {
-        showToast("Contestant not allowed to vote for themselves", true);
-        return;
-      }
-      if (isContestantByIp) {
-        showToast("Contestant not allowed to vote for themselves", true);
-        return;
-      }
-    }
     selectedContestantId = id;
     voteModalName.textContent = c.name;
     voteModal.classList.remove("hidden");
@@ -1586,7 +1574,7 @@
         (c.monologue_link ? '<div class="card-monologue-link"><strong>Monologue:</strong> <a href="' + c.monologue_link + '" target="_blank" rel="noopener noreferrer">' + c.monologue_link + '</a></div>' : '') +
       '</div>' +
       '<div class="card-actions">' +
-        '<button class="vote-btn-inline"' + (!isAdmin() && (isContestantByIp || (loggedInContestant && idsEqual(loggedInContestant.id, c.id))) ? ' disabled style="opacity:0.4;cursor:not-allowed;filter:grayscale(100%);"' : '') + '>Vote Now</button>' +
+        '<button class="vote-btn-inline">Vote Now</button>' +
         '<a href="' + profileUrl + '" class="profile-link-inline">Profile</a>' +
         '<button class="share-btn-inline">Share</button>' +
       '</div>';
@@ -3887,45 +3875,6 @@
     }
   }
 
-  // --- Check if visitor's IP belongs to any contestant ---
-  async function checkContestantIp() {
-    try {
-      var res = await fetch("/api/check-ip", { cache: "no-store" });
-      if (res.ok) {
-        var data = await res.json();
-        if (data.isContestant) {
-          isContestantByIp = true;
-          disableAllVotingForContestant();
-        }
-      }
-    } catch (e) {}
-  }
-
-  function disableAllVotingForContestant() {
-    // Skip disabling if in admin mode
-    if (isAdmin()) return;
-
-    // Add banner message above the contestant grid
-    var existingBanner = document.getElementById("self-vote-banner");
-    if (!existingBanner) {
-      var banner = document.createElement("div");
-      banner.id = "self-vote-banner";
-      banner.style.cssText = "background:#ff4444;color:#fff;text-align:center;padding:14px 20px;font-size:16px;font-weight:600;border-radius:8px;margin:16px auto;max-width:900px;";
-      banner.textContent = "Contestant not allowed to vote for themselves";
-      var appEl = document.getElementById("app");
-      if (appEl && appEl.parentNode) {
-        appEl.parentNode.insertBefore(banner, appEl);
-      }
-    }
-
-    // Grey out all vote buttons on cards
-    var allVoteBtns = document.querySelectorAll(".vote-btn-inline");
-    allVoteBtns.forEach(function (btn) {
-      btn.disabled = true;
-      btn.style.opacity = "0.4";
-      btn.style.cursor = "not-allowed";
-    });
-  }
 
   // --- Match logged-in user to contestant ---
   async function matchUserToContestant() {
@@ -3974,30 +3923,6 @@
     if (loggedInContestant && allGroups.length > 0) {
       refreshLoggedInUserGroups();
     }
-
-    // Disable vote buttons on the contestant's own card (skip in admin mode)
-    if (loggedInContestant && !isAdmin()) {
-      var ownCard = document.querySelector('.contestant-card[data-contestant-id="' + loggedInContestant.id + '"]');
-      if (ownCard) {
-        var voteBtn = ownCard.querySelector(".vote-btn-inline");
-        if (voteBtn) {
-          voteBtn.disabled = true;
-          voteBtn.style.opacity = "0.4";
-          voteBtn.style.cursor = "not-allowed";
-        }
-      }
-    }
-
-    // Record contestant's IP for self-vote prevention
-    if (loggedInContestant) {
-      try {
-        fetch("/api/record-ip", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contestantId: loggedInContestant.id })
-        });
-      } catch (e) {}
-    }
   }
 
   // --- Init ---
@@ -4037,7 +3962,6 @@
     await loadContestants();
     await loadGroups();
     await matchUserToContestant();
-    await checkContestantIp();
     updateNavForAuth();
     loadTimer();
     loadDoubleVotes();

@@ -33,8 +33,8 @@ async function blobsVerify(
       email: string;
       password: string;
     } | null;
-    if (record && record.password === password) return true;
-    return false;
+    if (!record) return null;
+    return record.password === password;
   } catch {
     return null;
   }
