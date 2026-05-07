@@ -823,13 +823,8 @@
           openVoteModal(c.id || id);
         });
 
-        // Disable Vote Now button if user is logged in (flag set before navigation)
         try {
-          if (sessionStorage.getItem("nfsLoggedInForProfile") === "1") {
-            var voteBtn = document.getElementById("profile-vote-btn");
-            voteBtn.disabled = true;
-            sessionStorage.removeItem("nfsLoggedInForProfile");
-          }
+          sessionStorage.removeItem("nfsLoggedInForProfile");
         } catch (e) {}
 
         // Share button — open modal (same as contestants page)
