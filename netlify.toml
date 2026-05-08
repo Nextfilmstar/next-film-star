@@ -17,6 +17,14 @@
   status = 200
   force = true
 
+# Local 2X Timer endpoint, served by the Netlify Function in this repo.
+# Must come BEFORE the forced /api/* proxy so this takes precedence.
+[[redirects]]
+  from = "/api/2x-timer"
+  to = "/.netlify/functions/2x-timer"
+  status = 200
+  force = true
+
 # Proxy the API and TanStack Start server-function endpoints to the
 # upstream deploy that hosts the live back-end and database.
 # Status 200 = transparent proxy (the user's URL bar stays on this site).

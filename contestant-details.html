@@ -239,6 +239,61 @@
       .profile-countdown-sep { font-size: 1.2rem; }
     }
 
+    .profile-2x-countdown {
+      text-align: center;
+      padding: 16px 20px;
+      margin: 0 0 20px;
+      background: linear-gradient(135deg, #2d1616, #3d2525);
+      border: 1px solid rgba(229, 57, 53, 0.25);
+      border-radius: 2px;
+    }
+    .profile-2x-countdown.hidden { display: none; }
+    .profile-2x-countdown-label {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1rem;
+      color: rgba(229, 57, 53, 0.7);
+      text-transform: uppercase;
+      letter-spacing: 4px;
+      margin-bottom: 10px;
+    }
+    .profile-2x-countdown-display {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+    .profile-2x-countdown-unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 60px;
+    }
+    .profile-2x-countdown-unit span {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 400;
+      color: #e53935;
+      line-height: 1;
+    }
+    .profile-2x-countdown-unit small {
+      font-size: 0.7rem;
+      color: rgba(255, 255, 255, 0.4);
+      text-transform: uppercase;
+      margin-top: 4px;
+      letter-spacing: 0.1em;
+    }
+    .profile-2x-countdown-sep {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: rgba(229, 57, 53, 0.3);
+      margin-top: -12px;
+    }
+    @media (max-width: 480px) {
+      .profile-2x-countdown-unit { min-width: 48px; }
+      .profile-2x-countdown-unit span { font-size: 1.7rem; }
+      .profile-2x-countdown-sep { font-size: 1.2rem; }
+    }
+
     /* Verification modal (shown before vote is recorded / Stripe redirect) */
     #verify-modal {
       position: fixed;
@@ -452,6 +507,18 @@
         <div class="profile-countdown-unit"><span id="profile-cd-secs">00</span><small>Seconds</small></div>
       </div>
     </div>
+    <div id="profile-2x-countdown" class="profile-2x-countdown hidden">
+      <div class="profile-2x-countdown-label">2X Time Remaining</div>
+      <div class="profile-2x-countdown-display">
+        <div class="profile-2x-countdown-unit"><span id="profile-2x-cd-days">00</span><small>Days</small></div>
+        <div class="profile-2x-countdown-sep">:</div>
+        <div class="profile-2x-countdown-unit"><span id="profile-2x-cd-hours">00</span><small>Hours</small></div>
+        <div class="profile-2x-countdown-sep">:</div>
+        <div class="profile-2x-countdown-unit"><span id="profile-2x-cd-mins">00</span><small>Minutes</small></div>
+        <div class="profile-2x-countdown-sep">:</div>
+        <div class="profile-2x-countdown-unit"><span id="profile-2x-cd-secs">00</span><small>Seconds</small></div>
+      </div>
+    </div>
     <div id="profile-content">
       <p class="profile-loading">Loading profile...</p>
     </div>
@@ -613,6 +680,45 @@
         if (timerEndTime > Date.now()) {
           timerInterval = setInterval(updateProfileCountdown, 1000);
         }
+      }).catch(function () {});
+
+      // --- 2X Timer Countdown ---
+      var twoXCountdownEl = document.getElementById("profile-2x-countdown");
+      var twoXDaysEl = document.getElementById("profile-2x-cd-days");
+      var twoXHoursEl = document.getElementById("profile-2x-cd-hours");
+      var twoXMinsEl = document.getElementById("profile-2x-cd-mins");
+      var twoXSecsEl = document.getElementById("profile-2x-cd-secs");
+      var twoXEndTime = null;
+      var twoXInterval = null;
+
+      function updateTwoXCountdown() {
+        if (!twoXEndTime) {
+          twoXCountdownEl.classList.add("hidden");
+          return;
+        }
+        var diff = twoXEndTime - Date.now();
+        if (diff <= 0) {
+          twoXCountdownEl.classList.add("hidden");
+          if (twoXInterval) { clearInterval(twoXInterval); twoXInterval = null; }
+          return;
+        }
+        twoXDaysEl.textContent = pad2(Math.floor(diff / 86400000));
+        twoXHoursEl.textContent = pad2(Math.floor((diff % 86400000) / 3600000));
+        twoXMinsEl.textContent = pad2(Math.floor((diff % 3600000) / 60000));
+        twoXSecsEl.textContent = pad2(Math.floor((diff % 60000) / 1000));
+        twoXCountdownEl.classList.remove("hidden");
+      }
+
+      fetch("/api/2x-timer").then(function (res) {
+        return res.ok ? res.json() : null;
+      }).then(function (data) {
+        if (!data || !data.endTime) return;
+        var t = new Date(data.endTime).getTime();
+        if (!isFinite(t)) return;
+        if (t <= Date.now()) return;
+        twoXEndTime = t;
+        updateTwoXCountdown();
+        twoXInterval = setInterval(updateTwoXCountdown, 1000);
       }).catch(function () {});
 
       if (!id) {
