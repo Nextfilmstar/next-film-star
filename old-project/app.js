@@ -1886,6 +1886,170 @@
     });
   }
 
+  // --- 2X Timer ---
+  var twoXTimerEndTime = null;
+  var twoXTimerInterval = null;
+
+  function ensureTwoXTimerUI() {
+    if (!adminPanel || document.getElementById("two-x-timer-section")) return;
+    var doubleVotesStatusEl = document.getElementById("double-votes-status");
+    var anchor = doubleVotesStatusEl
+      ? doubleVotesStatusEl.closest("div, section, fieldset") || doubleVotesStatusEl.parentNode
+      : null;
+
+    var section = document.createElement("div");
+    section.id = "two-x-timer-section";
+    section.style.cssText = "margin:18px 0 0;padding:14px;background:#1a1a2e;border:1px solid #d4a84b33;border-radius:8px;";
+    section.innerHTML =
+      '<h3 style="color:#d4a84b;font-size:1rem;margin:0 0 10px;letter-spacing:1px;">2X TIMER</h3>' +
+      '<div id="two-x-timer-countdown" style="display:none;text-align:center;margin-bottom:10px;">' +
+        '<div style="color:#ccc;font-size:0.75rem;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;">2X Time Remaining</div>' +
+        '<div style="display:flex;justify-content:center;gap:6px;align-items:center;">' +
+          '<div style="text-align:center;"><span id="two-x-cd-days" style="font-size:1.5rem;font-weight:700;color:#d4a84b;">00</span><br><small style="color:#888;font-size:0.65rem;text-transform:uppercase;">Days</small></div>' +
+          '<span style="font-size:1.2rem;color:#d4a84b33;margin-top:-10px;">:</span>' +
+          '<div style="text-align:center;"><span id="two-x-cd-hours" style="font-size:1.5rem;font-weight:700;color:#d4a84b;">00</span><br><small style="color:#888;font-size:0.65rem;text-transform:uppercase;">Hours</small></div>' +
+          '<span style="font-size:1.2rem;color:#d4a84b33;margin-top:-10px;">:</span>' +
+          '<div style="text-align:center;"><span id="two-x-cd-mins" style="font-size:1.5rem;font-weight:700;color:#d4a84b;">00</span><br><small style="color:#888;font-size:0.65rem;text-transform:uppercase;">Mins</small></div>' +
+          '<span style="font-size:1.2rem;color:#d4a84b33;margin-top:-10px;">:</span>' +
+          '<div style="text-align:center;"><span id="two-x-cd-secs" style="font-size:1.5rem;font-weight:700;color:#d4a84b;">00</span><br><small style="color:#888;font-size:0.65rem;text-transform:uppercase;">Secs</small></div>' +
+        '</div>' +
+      '</div>' +
+      '<div id="two-x-timer-status" style="color:#888;font-size:0.85rem;margin-bottom:8px;">No 2X timer set</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">' +
+        '<input id="two-x-timer-days" type="number" min="0" placeholder="Days" style="width:60px;padding:6px;border:1px solid #555;border-radius:4px;background:#111;color:#fff;font-size:0.85rem;" />' +
+        '<input id="two-x-timer-hours" type="number" min="0" max="23" placeholder="Hrs" style="width:60px;padding:6px;border:1px solid #555;border-radius:4px;background:#111;color:#fff;font-size:0.85rem;" />' +
+        '<input id="two-x-timer-mins" type="number" min="0" max="59" placeholder="Min" style="width:60px;padding:6px;border:1px solid #555;border-radius:4px;background:#111;color:#fff;font-size:0.85rem;" />' +
+        '<button id="two-x-set-timer-btn" type="button" class="btn btn-primary" style="font-size:0.85rem;padding:6px 14px;">Set 2X Timer</button>' +
+        '<button id="two-x-clear-timer-btn" type="button" class="btn btn-secondary" style="font-size:0.85rem;padding:6px 14px;">Clear</button>' +
+      '</div>';
+
+    if (anchor && anchor.nextSibling) {
+      anchor.parentNode.insertBefore(section, anchor.nextSibling);
+    } else if (anchor) {
+      anchor.parentNode.appendChild(section);
+    } else {
+      adminPanel.appendChild(section);
+    }
+
+    var setBtn = document.getElementById("two-x-set-timer-btn");
+    var clearBtn = document.getElementById("two-x-clear-timer-btn");
+
+    if (setBtn) {
+      setBtn.addEventListener("click", async function () {
+        var d = parseInt(document.getElementById("two-x-timer-days").value) || 0;
+        var h = parseInt(document.getElementById("two-x-timer-hours").value) || 0;
+        var mn = parseInt(document.getElementById("two-x-timer-mins").value) || 0;
+        if (d === 0 && h === 0 && mn === 0) {
+          showToast("Please set a time greater than zero", true);
+          return;
+        }
+        setBtn.textContent = "Setting...";
+        try {
+          var res = await fetch("/api/2x-timer", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+            body: JSON.stringify({ days: d, hours: h, minutes: mn })
+          });
+          if (!res.ok) {
+            var errData = await res.json();
+            showToast(errData.error || "Failed to set 2X timer", true);
+            return;
+          }
+          var data = await res.json();
+          twoXTimerEndTime = data.endTime ? new Date(data.endTime).getTime() : null;
+          if (twoXTimerEndTime !== null && !isFinite(twoXTimerEndTime)) twoXTimerEndTime = null;
+          updateTwoXCountdown();
+          if (twoXTimerInterval) clearInterval(twoXTimerInterval);
+          if (twoXTimerEndTime) twoXTimerInterval = setInterval(updateTwoXCountdown, 1000);
+          showToast("2X Timer set successfully!");
+        } catch (err) {
+          showToast("Failed to set 2X timer", true);
+        } finally {
+          setBtn.textContent = "Set 2X Timer";
+        }
+      });
+    }
+
+    if (clearBtn) {
+      clearBtn.addEventListener("click", async function () {
+        if (!confirm("Clear the 2X timer?")) return;
+        try {
+          var res = await fetch("/api/2x-timer", {
+            method: "DELETE",
+            headers: { "X-Admin-Token": adminToken }
+          });
+          if (res.ok) {
+            twoXTimerEndTime = null;
+            if (twoXTimerInterval) { clearInterval(twoXTimerInterval); twoXTimerInterval = null; }
+            updateTwoXCountdown();
+            showToast("2X Timer cleared");
+          }
+        } catch (err) {
+          showToast("Failed to clear 2X timer", true);
+        }
+      });
+    }
+  }
+
+  function updateTwoXCountdown() {
+    var countdownDiv = document.getElementById("two-x-timer-countdown");
+    var statusDiv = document.getElementById("two-x-timer-status");
+    var daysEl = document.getElementById("two-x-cd-days");
+    var hoursEl = document.getElementById("two-x-cd-hours");
+    var minsEl = document.getElementById("two-x-cd-mins");
+    var secsEl = document.getElementById("two-x-cd-secs");
+    if (!countdownDiv) return;
+
+    if (!twoXTimerEndTime) {
+      countdownDiv.style.display = "none";
+      if (statusDiv) statusDiv.textContent = "No 2X timer set";
+      return;
+    }
+
+    var diff = twoXTimerEndTime - Date.now();
+    if (diff <= 0) {
+      if (daysEl) daysEl.textContent = "00";
+      if (hoursEl) hoursEl.textContent = "00";
+      if (minsEl) minsEl.textContent = "00";
+      if (secsEl) secsEl.textContent = "00";
+      countdownDiv.style.display = "";
+      if (statusDiv) statusDiv.textContent = "2X Timer has ended!";
+      if (twoXTimerInterval) { clearInterval(twoXTimerInterval); twoXTimerInterval = null; }
+      return;
+    }
+
+    countdownDiv.style.display = "";
+    var d = Math.floor(diff / 86400000);
+    var h = Math.floor((diff % 86400000) / 3600000);
+    var m = Math.floor((diff % 3600000) / 60000);
+    var s = Math.floor((diff % 60000) / 1000);
+    if (daysEl) daysEl.textContent = d < 10 ? "0" + d : d;
+    if (hoursEl) hoursEl.textContent = h < 10 ? "0" + h : h;
+    if (minsEl) minsEl.textContent = m < 10 ? "0" + m : m;
+    if (secsEl) secsEl.textContent = s < 10 ? "0" + s : s;
+
+    if (statusDiv) {
+      var endDate = new Date(twoXTimerEndTime);
+      statusDiv.textContent = "2X Ends: " + endDate.toLocaleString();
+    }
+  }
+
+  async function loadTwoXTimer() {
+    try {
+      var res = await fetch("/api/2x-timer");
+      var data = await res.json();
+      twoXTimerEndTime = data.endTime ? new Date(data.endTime).getTime() : null;
+      if (twoXTimerEndTime !== null && !isFinite(twoXTimerEndTime)) twoXTimerEndTime = null;
+      updateTwoXCountdown();
+      if (twoXTimerInterval) clearInterval(twoXTimerInterval);
+      if (twoXTimerEndTime && twoXTimerEndTime > Date.now()) {
+        twoXTimerInterval = setInterval(updateTwoXCountdown, 1000);
+      }
+    } catch (err) {
+      console.error("Failed to load 2X timer:", err);
+    }
+  }
+
   // --- Emails Management ---
   var emailsDropdown = document.getElementById("emails-dropdown");
   var removeEmailBtn = document.getElementById("remove-email-btn");
@@ -3965,6 +4129,8 @@
     updateNavForAuth();
     loadTimer();
     loadDoubleVotes();
+    ensureTwoXTimerUI();
+    loadTwoXTimer();
     loadEmails();
     loadContestLive();
     loadParticipants();
