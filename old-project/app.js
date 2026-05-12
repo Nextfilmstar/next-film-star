@@ -3770,7 +3770,8 @@
 
       var title = document.createElement("h4");
       title.style.cssText = "color:#e94560;font-size:1rem;margin:0;";
-      title.textContent = (group.groupNumber ? "Group " + group.groupNumber + ": " : "") + group.name + " (" + (group.contestantIds ? group.contestantIds.length : 0) + " contestants)";
+      var actualCount = group.contestantIds ? group.contestantIds.filter(function (cId) { return currentContestants.find(function (c) { return idsEqual(c.id, cId); }); }).length : 0;
+      title.textContent = (group.groupNumber ? "Group " + group.groupNumber + ": " : "") + group.name + " (" + actualCount + " contestants)";
       header.appendChild(title);
 
       var headerBtns = document.createElement("div");
