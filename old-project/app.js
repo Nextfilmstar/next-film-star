@@ -2870,8 +2870,8 @@
         })
       });
       if (res.ok) {
-        showToast("SOL email sent to " + email);
-        btn.textContent = "SOL sent";
+        showToast("Email sent to " + email);
+        btn.textContent = "Email sent";
         return;
       }
       // Server couldn't send (most often: email service not configured).
@@ -2914,7 +2914,7 @@
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      showToast("Opening your email app to send the SOL message to " + app.email);
+      showToast("Opening your email app to send the message to " + app.email);
     } catch (e) {
       window.location.href = href;
     }
@@ -2943,6 +2943,46 @@
     }
   }
 
+  async function resetContestantVotes(app, btn) {
+    if (!app.contestantId) {
+      showToast("Accept this applicant first.", true);
+      return;
+    }
+    if (!confirm("Reset all votes for " + app.name + " to 0? This cannot be undone.")) return;
+
+    var originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Resetting...";
+
+    try {
+      var res = await fetch("/api/contestants/" + encodeURIComponent(app.contestantId), {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Admin-Token": adminToken
+        },
+        body: JSON.stringify({ votes: 0 })
+      });
+      if (!res.ok) throw new Error("Failed to reset contestant votes");
+
+      try {
+        await fetch("/api/vote-events?contestantId=" + encodeURIComponent(app.contestantId), {
+          method: "DELETE",
+          headers: { "X-Admin-Token": adminToken }
+        });
+      } catch (e) {}
+
+      showToast("Votes for " + app.name + " have been reset to 0.");
+      btn.textContent = "Reset Votes";
+      try { await loadContestants(); } catch (e) {}
+    } catch (err) {
+      showToast((err && err.message) || "Failed to reset votes.", true);
+      btn.textContent = originalText;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
   function renderParticipants(applications) {
     if (!participantsList) return;
     participantsList.innerHTML = "";
@@ -2953,9 +2993,6 @@
     }
 
     applications = applications.slice().sort(function (a, b) {
-      var dateA = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
-      var dateB = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
-      if (dateA !== dateB) return dateA - dateB;
       var nameA = (a.name || "").toLowerCase();
       var nameB = (b.name || "").toLowerCase();
       return nameA.localeCompare(nameB);
@@ -3002,15 +3039,27 @@
 
       var solBtn = document.createElement("button");
       solBtn.className = "btn btn-sol";
-      solBtn.textContent = "SOL";
+      solBtn.textContent = "Send Email";
       solBtn.title = app.contestantId
         ? "Send the 'Now is your time!' email with this contestant's profile link"
-        : "Accept this applicant first to enable SOL";
+        : "Accept this applicant first to enable Send Email";
       if (!app.contestantId) {
         solBtn.disabled = true;
       }
       solBtn.onclick = function () { sendSolEmail(app, solBtn); };
       card.querySelector(".participant-actions").appendChild(solBtn);
+
+      var resetVotesBtn = document.createElement("button");
+      resetVotesBtn.className = "btn btn-danger btn-sm";
+      resetVotesBtn.textContent = "Reset Votes";
+      resetVotesBtn.title = app.contestantId
+        ? "Reset all votes for " + app.name + " to 0"
+        : "Accept this applicant first to reset votes";
+      if (!app.contestantId) {
+        resetVotesBtn.disabled = true;
+      }
+      resetVotesBtn.onclick = function () { resetContestantVotes(app, resetVotesBtn); };
+      card.querySelector(".participant-actions").appendChild(resetVotesBtn);
 
       var analyticsBtn = document.createElement("button");
       analyticsBtn.className = "btn btn-secondary btn-sm";

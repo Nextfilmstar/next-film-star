@@ -134,5 +134,22 @@ export default async (req: Request) => {
     });
   }
 
+  if (req.method === "DELETE") {
+    const url = new URL(req.url);
+    const contestantId = url.searchParams.get("contestantId");
+    if (!contestantId) {
+      return Response.json(
+        { error: "contestantId query parameter is required" },
+        { status: 400 },
+      );
+    }
+
+    await db.sql`
+      DELETE FROM vote_events WHERE contestant_id = ${contestantId}
+    `;
+
+    return Response.json({ ok: true, contestantId });
+  }
+
   return new Response("Method Not Allowed", { status: 405 });
 };
