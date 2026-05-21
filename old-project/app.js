@@ -2682,6 +2682,84 @@
     anchorBtn.parentNode.insertBefore(allAnalyticsBtn, anchorBtn.nextSibling);
   })();
 
+  // --- Reset All Votes button (sits beside the other action buttons in
+  // Participants (Applications)). Resets every contestant's votes to 0.
+  async function resetAllVotes(btn) {
+    if (!confirm("Reset ALL participants' votes to 0? This cannot be undone.")) return;
+
+    var originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Resetting...";
+
+    try {
+      var accepted = (currentApplications || []).filter(function (app) {
+        return app.contestantId;
+      });
+
+      if (accepted.length === 0) {
+        showToast("No accepted contestants to reset.", true);
+        btn.textContent = originalText;
+        btn.disabled = false;
+        return;
+      }
+
+      var failed = 0;
+      for (var i = 0; i < accepted.length; i++) {
+        var app = accepted[i];
+        try {
+          var res = await fetch("/api/contestants/" + encodeURIComponent(app.contestantId), {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Admin-Token": adminToken
+            },
+            body: JSON.stringify({ votes: 0 })
+          });
+          if (!res.ok) throw new Error("Failed");
+
+          try {
+            await fetch("/api/vote-events?contestantId=" + encodeURIComponent(app.contestantId), {
+              method: "DELETE",
+              headers: { "X-Admin-Token": adminToken }
+            });
+          } catch (e) {}
+        } catch (err) {
+          failed++;
+        }
+      }
+
+      if (failed === 0) {
+        showToast("All votes have been reset to 0 for " + accepted.length + " contestant" + (accepted.length === 1 ? "" : "s") + ".");
+      } else {
+        showToast("Reset completed with " + failed + " error(s) out of " + accepted.length + " contestants.", true);
+      }
+
+      try { await loadContestants(); } catch (e) {}
+      try { await loadParticipants(); } catch (e) {}
+    } catch (err) {
+      showToast((err && err.message) || "Failed to reset all votes.", true);
+    } finally {
+      btn.textContent = originalText;
+      btn.disabled = false;
+    }
+  }
+
+  (function injectResetAllVotesButton() {
+    if (document.getElementById("reset-all-votes-btn")) return;
+    var anchorBtn = document.getElementById("all-vote-analytics-btn") || individualMassEmailBtn || massEmailBtn;
+    if (!anchorBtn || !anchorBtn.parentNode) return;
+    var resetAllBtn = document.createElement("button");
+    resetAllBtn.id = "reset-all-votes-btn";
+    resetAllBtn.type = "button";
+    resetAllBtn.className = "btn btn-danger";
+    resetAllBtn.textContent = "Reset All Votes";
+    resetAllBtn.title = "Reset all participants' votes to 0";
+    resetAllBtn.addEventListener("click", function () {
+      resetAllVotes(resetAllBtn);
+    });
+    anchorBtn.parentNode.insertBefore(resetAllBtn, anchorBtn.nextSibling);
+  })();
+
   async function acceptApplicant(app, btn) {
     if (app.accepted) {
       btn.textContent = "accepted";
