@@ -796,6 +796,12 @@
 
         var html = '<div class="profile-card">';
 
+        // Quarter Finalist banner for contestants in Quarter Final groups
+        var isQuarterFinalist = contestantGroup && contestantGroup.name && contestantGroup.name.toLowerCase().indexOf('quarter final') !== -1;
+        if (isQuarterFinalist) {
+          html += '<div style="color:red;font-weight:bold;font-size:2.2em;text-align:center;padding:12px 0 4px 0;letter-spacing:1px;text-transform:uppercase;">QUARTER FINALIST!</div>';
+        }
+
         // Name above the photo
         html += '<div class="profile-name-header">';
         html += '<h1>' + (c.name || "Unknown") + '</h1>';
