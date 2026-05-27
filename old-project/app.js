@@ -1536,15 +1536,6 @@
       groupMembers.forEach(function (c) { usedIds[normalizeId(c.id)] = true; });
     });
 
-    // Contestants not in any group
-    var ungrouped = contestants.filter(function (c) {
-      return !usedIds[normalizeId(c.id)];
-    });
-    if (ungrouped.length > 0) {
-      ungrouped.sort(function (a, b) { return (b.votes || 0) - (a.votes || 0); });
-      grouped.push({ group: null, contestants: ungrouped });
-    }
-
     return grouped;
   }
 
@@ -2377,50 +2368,26 @@
   var massEmailInfo = document.getElementById("mass-email-recipients-info");
 
   function getMassEmailRecipients() {
+    var groupedIds = {};
+    allGroups.forEach(function (g) {
+      if (!g || !Array.isArray(g.contestantIds)) return;
+      g.contestantIds.forEach(function (id) {
+        groupedIds[normalizeId(id)] = true;
+      });
+    });
+
     var seen = Object.create(null);
     var recipients = [];
-
-    function addEmail(raw) {
-      var email = (raw == null ? "" : String(raw)).trim();
+    (currentApplications || []).forEach(function (app) {
+      if (!app || !app.contestantId) return;
+      if (!groupedIds[normalizeId(app.contestantId)]) return;
+      var email = (app.email == null ? "" : String(app.email)).trim();
       if (!email) return;
       var key = email.toLowerCase();
       if (seen[key]) return;
       seen[key] = true;
       recipients.push(email);
-    }
-
-    // Scrape the rendered "Email" section of every participant card so the
-    // recipient list reflects exactly what the admin sees on screen. This
-    // avoids missing addresses when the in-memory list and the rendered DOM
-    // disagree (e.g. lazy renders, filtered views, or stale state).
-    if (participantsList) {
-      var fields = participantsList.querySelectorAll(".participant-field");
-      for (var i = 0; i < fields.length; i++) {
-        var field = fields[i];
-        var label = field.querySelector("strong");
-        if (!label || !/^\s*Email\s*:?\s*$/i.test(label.textContent || "")) continue;
-        var links = field.querySelectorAll('a[href^="mailto:"]');
-        if (links.length) {
-          for (var j = 0; j < links.length; j++) {
-            var href = links[j].getAttribute("href") || "";
-            var fromHref = href.replace(/^mailto:/i, "").split("?")[0];
-            try { fromHref = decodeURIComponent(fromHref); } catch (e) {}
-            addEmail(fromHref || links[j].textContent);
-          }
-        } else {
-          var text = (field.textContent || "").replace(/^[\s\S]*?Email\s*:?\s*/i, "");
-          addEmail(text);
-        }
-      }
-    }
-
-    // Fall back to the loaded applications data when the DOM hasn't been
-    // rendered yet, so the button still works on a fresh admin panel load.
-    if (recipients.length === 0) {
-      (currentApplications || []).forEach(function (app) {
-        addEmail(app && app.email);
-      });
-    }
+    });
 
     return recipients;
   }
@@ -2441,9 +2408,9 @@
     var recipients = getMassEmailRecipients();
     if (massEmailInfo) {
       if (recipients.length === 0) {
-        massEmailInfo.textContent = "No contestants with an email address are available to message.";
+        massEmailInfo.textContent = "No contestants in active leaderboard groups have an email address.";
       } else {
-        massEmailInfo.textContent = "Sends to " + recipients.length + " contestant" + (recipients.length === 1 ? "" : "s") + " in the Participants (Applications) list.";
+        massEmailInfo.textContent = "Sends to " + recipients.length + " contestant" + (recipients.length === 1 ? "" : "s") + " in active leaderboard groups.";
       }
     }
     setMassEmailFeedback("", false);
@@ -2482,7 +2449,7 @@
     var body = (massEmailBody && massEmailBody.value || "").trim();
 
     if (recipients.length === 0) {
-      setMassEmailFeedback("No contestants with an email address to send to.", true);
+      setMassEmailFeedback("No contestants in active leaderboard groups have an email address.", true);
       return;
     }
     if (!subject) {
