@@ -1811,14 +1811,21 @@
   var doubleVotesLabel = document.getElementById("double-votes-label");
   var doubleVotesStatus = document.getElementById("double-votes-status");
   var doubleVotesEnabled = false;
+  var tripleVotesEnabled = false;
 
-  function updateVoteModalText(enabled) {
-    doubleVotesEnabled = enabled;
+  function adminVoteMultiplier() {
+    if (tripleVotesEnabled) return 3;
+    if (doubleVotesEnabled) return 2;
+    return 1;
+  }
+
+  function updateVoteModalText() {
+    var m = adminVoteMultiplier();
     // Update free vote button text
     var freeVoteBtn = voteModal ? voteModal.querySelector(".free-vote") : null;
     if (freeVoteBtn) {
       var freeCount = freeVoteBtn.querySelector(".vote-count");
-      if (freeCount) freeCount.textContent = enabled ? "2 Votes" : "1 Vote";
+      if (freeCount) freeCount.textContent = m + (m === 1 ? " Vote" : " Votes");
     }
     // Update paid vote button text
     var paidBtns = voteModal ? voteModal.querySelectorAll(".paid-vote") : [];
@@ -1827,7 +1834,7 @@
       var countEl = btn.querySelector(".vote-count");
       if (countEl) {
         var baseVotes = amount; // $5 = 5 votes, $10 = 10 votes, etc.
-        countEl.textContent = (enabled ? baseVotes * 2 : baseVotes) + " Votes";
+        countEl.textContent = (baseVotes * m) + " Votes";
       }
     });
   }
@@ -1836,7 +1843,8 @@
     try {
       var res = await fetch("/api/double-votes");
       var data = await res.json();
-      updateVoteModalText(data.enabled);
+      doubleVotesEnabled = !!data.enabled;
+      updateVoteModalText();
       if (doubleVotesToggle) {
         doubleVotesToggle.checked = data.enabled;
         doubleVotesLabel.textContent = data.enabled ? "On" : "Off";
@@ -1871,12 +1879,17 @@
           return;
         }
 
+        doubleVotesEnabled = enabled;
+        // 2X and 3X are mutually exclusive — turning 2X on switches 3X off.
+        if (enabled && tripleVotesEnabled) {
+          await setTripleVotes(false);
+        }
         doubleVotesLabel.textContent = enabled ? "On" : "Off";
         doubleVotesLabel.style.color = enabled ? "#f5c518" : "#888";
         if (doubleVotesStatus) {
           doubleVotesStatus.textContent = enabled ? "All votes are currently doubled!" : "";
         }
-        updateVoteModalText(enabled);
+        updateVoteModalText();
         showToast(enabled ? "2x Votes enabled!" : "2x Votes disabled");
       } catch (err) {
         showToast("Failed to update setting", true);
@@ -1884,6 +1897,123 @@
       } finally {
       }
     });
+  }
+
+  // --- Triple Votes (3X) Toggle ---
+  // The upstream admin page only ships the 2X toggle, so the 3X VOTES section
+  // is injected here and backed by the local /api/triple-votes function. It
+  // mirrors the 2X toggle: when on, every vote counts triple.
+  var tripleVotesToggle = null;
+  var tripleVotesLabel = null;
+  var tripleVotesStatus = null;
+
+  // Write the 3X state to the server and sync the toggle UI + modal labels.
+  // Used both by the toggle itself and by the 2X toggle to keep them exclusive.
+  async function setTripleVotes(enabled) {
+    var res = await fetch("/api/triple-votes", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Token": adminToken
+      },
+      body: JSON.stringify({ enabled: enabled })
+    });
+    if (!res.ok) {
+      var errData = await res.json().catch(function () { return {}; });
+      throw new Error(errData.error || "Failed to update setting");
+    }
+    tripleVotesEnabled = enabled;
+    if (tripleVotesToggle) tripleVotesToggle.checked = enabled;
+    if (tripleVotesLabel) {
+      tripleVotesLabel.textContent = enabled ? "On" : "Off";
+      tripleVotesLabel.style.color = enabled ? "#f5c518" : "#888";
+    }
+    if (tripleVotesStatus) {
+      tripleVotesStatus.textContent = enabled ? "All votes are currently tripled!" : "";
+    }
+    updateVoteModalText();
+    return res;
+  }
+
+  function ensureTripleVotesUI() {
+    if (!adminPanel || document.getElementById("triple-votes-section")) return;
+    var anchor = doubleVotesStatus
+      ? doubleVotesStatus.closest("div, section, fieldset") || doubleVotesStatus.parentNode
+      : null;
+
+    var section = document.createElement("div");
+    section.id = "triple-votes-section";
+    section.style.cssText = "margin:18px 0 0;padding:14px;background:#1a1a2e;border:1px solid #d4a84b33;border-radius:8px;";
+    section.innerHTML =
+      '<h3 style="color:#d4a84b;font-size:1rem;margin:0 0 10px;letter-spacing:1px;">3X VOTES</h3>' +
+      '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;">' +
+        '<input id="triple-votes-toggle" type="checkbox" style="width:20px;height:20px;cursor:pointer;" />' +
+        '<span style="color:#ccc;font-size:0.9rem;">Triple all votes</span>' +
+        '<span id="triple-votes-label" style="font-weight:700;color:#888;">Off</span>' +
+      '</label>' +
+      '<div id="triple-votes-status" style="color:#f5c518;font-size:0.85rem;margin-top:8px;min-height:1em;"></div>';
+
+    if (anchor && anchor.nextSibling) {
+      anchor.parentNode.insertBefore(section, anchor.nextSibling);
+    } else if (anchor) {
+      anchor.parentNode.appendChild(section);
+    } else {
+      adminPanel.appendChild(section);
+    }
+
+    tripleVotesToggle = document.getElementById("triple-votes-toggle");
+    tripleVotesLabel = document.getElementById("triple-votes-label");
+    tripleVotesStatus = document.getElementById("triple-votes-status");
+
+    if (tripleVotesToggle) {
+      tripleVotesToggle.addEventListener("change", async function () {
+        var enabled = tripleVotesToggle.checked;
+        try {
+          await setTripleVotes(enabled);
+          // 2X and 3X are mutually exclusive — turning 3X on switches 2X off.
+          if (enabled && doubleVotesEnabled && doubleVotesToggle) {
+            var res = await fetch("/api/double-votes", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+              body: JSON.stringify({ enabled: false })
+            });
+            if (res.ok) {
+              doubleVotesEnabled = false;
+              doubleVotesToggle.checked = false;
+              if (doubleVotesLabel) {
+                doubleVotesLabel.textContent = "Off";
+                doubleVotesLabel.style.color = "#888";
+              }
+              if (doubleVotesStatus) doubleVotesStatus.textContent = "";
+              updateVoteModalText();
+            }
+          }
+          showToast(enabled ? "3X Votes enabled!" : "3X Votes disabled");
+        } catch (err) {
+          showToast(err.message || "Failed to update setting", true);
+          tripleVotesToggle.checked = !enabled;
+        }
+      });
+    }
+  }
+
+  async function loadTripleVotes() {
+    try {
+      var res = await fetch("/api/triple-votes");
+      var data = await res.json();
+      tripleVotesEnabled = !!data.enabled;
+      if (tripleVotesToggle) tripleVotesToggle.checked = tripleVotesEnabled;
+      if (tripleVotesLabel) {
+        tripleVotesLabel.textContent = tripleVotesEnabled ? "On" : "Off";
+        tripleVotesLabel.style.color = tripleVotesEnabled ? "#f5c518" : "#888";
+      }
+      if (tripleVotesStatus) {
+        tripleVotesStatus.textContent = tripleVotesEnabled ? "All votes are currently tripled!" : "";
+      }
+      updateVoteModalText();
+    } catch (err) {
+      console.error("Failed to load triple votes setting:", err);
+    }
   }
 
   // --- 2X Timer ---
@@ -2047,6 +2177,172 @@
       }
     } catch (err) {
       console.error("Failed to load 2X timer:", err);
+    }
+  }
+
+  // --- 3X Timer ---
+  // Mirrors the 2X Timer above, but backed by the local /api/3x-timer
+  // function. Lets the admin run a countdown for the 3X Votes promotion.
+  var threeXTimerEndTime = null;
+  var threeXTimerInterval = null;
+
+  function ensureThreeXTimerUI() {
+    if (!adminPanel || document.getElementById("three-x-timer-section")) return;
+    // Anchor directly after the injected 3X VOTES section so the 3X timer
+    // sits with its toggle, the way the 2X timer follows the 2X toggle.
+    var anchor = document.getElementById("triple-votes-section")
+      || document.getElementById("two-x-timer-section");
+
+    var section = document.createElement("div");
+    section.id = "three-x-timer-section";
+    section.style.cssText = "margin:18px 0 0;padding:14px;background:#1a1a2e;border:1px solid #d4a84b33;border-radius:8px;";
+    section.innerHTML =
+      '<h3 style="color:#d4a84b;font-size:1rem;margin:0 0 10px;letter-spacing:1px;">3X TIMER</h3>' +
+      '<div id="three-x-timer-countdown" style="display:none;text-align:center;margin-bottom:10px;">' +
+        '<div style="color:#ccc;font-size:0.75rem;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;">3X Time Remaining</div>' +
+        '<div style="display:flex;justify-content:center;gap:6px;align-items:center;">' +
+          '<div style="text-align:center;"><span id="three-x-cd-days" style="font-size:1.5rem;font-weight:700;color:#d4a84b;">00</span><br><small style="color:#888;font-size:0.65rem;text-transform:uppercase;">Days</small></div>' +
+          '<span style="font-size:1.2rem;color:#d4a84b33;margin-top:-10px;">:</span>' +
+          '<div style="text-align:center;"><span id="three-x-cd-hours" style="font-size:1.5rem;font-weight:700;color:#d4a84b;">00</span><br><small style="color:#888;font-size:0.65rem;text-transform:uppercase;">Hours</small></div>' +
+          '<span style="font-size:1.2rem;color:#d4a84b33;margin-top:-10px;">:</span>' +
+          '<div style="text-align:center;"><span id="three-x-cd-mins" style="font-size:1.5rem;font-weight:700;color:#d4a84b;">00</span><br><small style="color:#888;font-size:0.65rem;text-transform:uppercase;">Mins</small></div>' +
+          '<span style="font-size:1.2rem;color:#d4a84b33;margin-top:-10px;">:</span>' +
+          '<div style="text-align:center;"><span id="three-x-cd-secs" style="font-size:1.5rem;font-weight:700;color:#d4a84b;">00</span><br><small style="color:#888;font-size:0.65rem;text-transform:uppercase;">Secs</small></div>' +
+        '</div>' +
+      '</div>' +
+      '<div id="three-x-timer-status" style="color:#888;font-size:0.85rem;margin-bottom:8px;">No 3X timer set</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">' +
+        '<input id="three-x-timer-days" type="number" min="0" placeholder="Days" style="width:60px;padding:6px;border:1px solid #555;border-radius:4px;background:#111;color:#fff;font-size:0.85rem;" />' +
+        '<input id="three-x-timer-hours" type="number" min="0" max="23" placeholder="Hrs" style="width:60px;padding:6px;border:1px solid #555;border-radius:4px;background:#111;color:#fff;font-size:0.85rem;" />' +
+        '<input id="three-x-timer-mins" type="number" min="0" max="59" placeholder="Min" style="width:60px;padding:6px;border:1px solid #555;border-radius:4px;background:#111;color:#fff;font-size:0.85rem;" />' +
+        '<button id="three-x-set-timer-btn" type="button" class="btn btn-primary" style="font-size:0.85rem;padding:6px 14px;">Set 3X Timer</button>' +
+        '<button id="three-x-clear-timer-btn" type="button" class="btn btn-secondary" style="font-size:0.85rem;padding:6px 14px;">Clear</button>' +
+      '</div>';
+
+    if (anchor && anchor.nextSibling) {
+      anchor.parentNode.insertBefore(section, anchor.nextSibling);
+    } else if (anchor) {
+      anchor.parentNode.appendChild(section);
+    } else {
+      adminPanel.appendChild(section);
+    }
+
+    var setBtn = document.getElementById("three-x-set-timer-btn");
+    var clearBtn = document.getElementById("three-x-clear-timer-btn");
+
+    if (setBtn) {
+      setBtn.addEventListener("click", async function () {
+        var d = parseInt(document.getElementById("three-x-timer-days").value) || 0;
+        var h = parseInt(document.getElementById("three-x-timer-hours").value) || 0;
+        var mn = parseInt(document.getElementById("three-x-timer-mins").value) || 0;
+        if (d === 0 && h === 0 && mn === 0) {
+          showToast("Please set a time greater than zero", true);
+          return;
+        }
+        setBtn.textContent = "Setting...";
+        try {
+          var res = await fetch("/api/3x-timer", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+            body: JSON.stringify({ days: d, hours: h, minutes: mn })
+          });
+          if (!res.ok) {
+            var errData = await res.json();
+            showToast(errData.error || "Failed to set 3X timer", true);
+            return;
+          }
+          var data = await res.json();
+          threeXTimerEndTime = data.endTime ? new Date(data.endTime).getTime() : null;
+          if (threeXTimerEndTime !== null && !isFinite(threeXTimerEndTime)) threeXTimerEndTime = null;
+          updateThreeXCountdown();
+          if (threeXTimerInterval) clearInterval(threeXTimerInterval);
+          if (threeXTimerEndTime) threeXTimerInterval = setInterval(updateThreeXCountdown, 1000);
+          showToast("3X Timer set successfully!");
+        } catch (err) {
+          showToast("Failed to set 3X timer", true);
+        } finally {
+          setBtn.textContent = "Set 3X Timer";
+        }
+      });
+    }
+
+    if (clearBtn) {
+      clearBtn.addEventListener("click", async function () {
+        if (!confirm("Clear the 3X timer?")) return;
+        try {
+          var res = await fetch("/api/3x-timer", {
+            method: "DELETE",
+            headers: { "X-Admin-Token": adminToken }
+          });
+          if (res.ok) {
+            threeXTimerEndTime = null;
+            if (threeXTimerInterval) { clearInterval(threeXTimerInterval); threeXTimerInterval = null; }
+            updateThreeXCountdown();
+            showToast("3X Timer cleared");
+          }
+        } catch (err) {
+          showToast("Failed to clear 3X timer", true);
+        }
+      });
+    }
+  }
+
+  function updateThreeXCountdown() {
+    var countdownDiv = document.getElementById("three-x-timer-countdown");
+    var statusDiv = document.getElementById("three-x-timer-status");
+    var daysEl = document.getElementById("three-x-cd-days");
+    var hoursEl = document.getElementById("three-x-cd-hours");
+    var minsEl = document.getElementById("three-x-cd-mins");
+    var secsEl = document.getElementById("three-x-cd-secs");
+    if (!countdownDiv) return;
+
+    if (!threeXTimerEndTime) {
+      countdownDiv.style.display = "none";
+      if (statusDiv) statusDiv.textContent = "No 3X timer set";
+      return;
+    }
+
+    var diff = threeXTimerEndTime - Date.now();
+    if (diff <= 0) {
+      if (daysEl) daysEl.textContent = "00";
+      if (hoursEl) hoursEl.textContent = "00";
+      if (minsEl) minsEl.textContent = "00";
+      if (secsEl) secsEl.textContent = "00";
+      countdownDiv.style.display = "";
+      if (statusDiv) statusDiv.textContent = "3X Timer has ended!";
+      if (threeXTimerInterval) { clearInterval(threeXTimerInterval); threeXTimerInterval = null; }
+      return;
+    }
+
+    countdownDiv.style.display = "";
+    var d = Math.floor(diff / 86400000);
+    var h = Math.floor((diff % 86400000) / 3600000);
+    var m = Math.floor((diff % 3600000) / 60000);
+    var s = Math.floor((diff % 60000) / 1000);
+    if (daysEl) daysEl.textContent = d < 10 ? "0" + d : d;
+    if (hoursEl) hoursEl.textContent = h < 10 ? "0" + h : h;
+    if (minsEl) minsEl.textContent = m < 10 ? "0" + m : m;
+    if (secsEl) secsEl.textContent = s < 10 ? "0" + s : s;
+
+    if (statusDiv) {
+      var endDate = new Date(threeXTimerEndTime);
+      statusDiv.textContent = "3X Ends: " + endDate.toLocaleString();
+    }
+  }
+
+  async function loadThreeXTimer() {
+    try {
+      var res = await fetch("/api/3x-timer");
+      var data = await res.json();
+      threeXTimerEndTime = data.endTime ? new Date(data.endTime).getTime() : null;
+      if (threeXTimerEndTime !== null && !isFinite(threeXTimerEndTime)) threeXTimerEndTime = null;
+      updateThreeXCountdown();
+      if (threeXTimerInterval) clearInterval(threeXTimerInterval);
+      if (threeXTimerEndTime && threeXTimerEndTime > Date.now()) {
+        threeXTimerInterval = setInterval(updateThreeXCountdown, 1000);
+      }
+    } catch (err) {
+      console.error("Failed to load 3X timer:", err);
     }
   }
 
@@ -4179,8 +4475,12 @@
     updateNavForAuth();
     loadTimer();
     loadDoubleVotes();
+    ensureTripleVotesUI();
+    loadTripleVotes();
     ensureTwoXTimerUI();
     loadTwoXTimer();
+    ensureThreeXTimerUI();
+    loadThreeXTimer();
     loadEmails();
     loadContestLive();
     loadParticipants();

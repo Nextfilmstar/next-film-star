@@ -89,6 +89,14 @@ export default async (req: Request) => {
       ? payload.contestantName.trim()
       : "";
 
+  // Number of votes this purchase credits (already multiplied for 2X/3X by the
+  // caller). When provided, the Stripe checkout product is named after it so
+  // the hosted Stripe page shows e.g. "15 Votes" for the "15 votes $5" button
+  // instead of the base "5 Votes" product name.
+  const votesRaw = Number(payload?.votes);
+  const votes =
+    Number.isFinite(votesRaw) && votesRaw > 0 ? Math.round(votesRaw) : 0;
+
   const secretKey = process.env.STRIPE_SECRET_KEY;
   const customAmountLink = (
     process.env.STRIPE_CUSTOM_AMOUNT_PAYMENT_LINK || ""
@@ -107,9 +115,11 @@ export default async (req: Request) => {
         }
       })();
 
-    const productName = contestantName
-      ? `Votes for ${contestantName}`
-      : "Contestant votes";
+    const productName = votes
+      ? `${votes} Votes`
+      : contestantName
+        ? `Votes for ${contestantName}`
+        : "Contestant votes";
 
     const params = new URLSearchParams();
     params.append("mode", "payment");
